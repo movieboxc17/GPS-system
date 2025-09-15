@@ -1,14 +1,9 @@
-// Journey recorder and path drawer using GPS and cellular data
-
-let map, path, marker;
+let map, currentMarker;
 let journey = [];
+let markers = [];
+let path = null;
 let watchId = null;
 let started = false;
-
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const statusDiv = document.getElementById('status');
 
 // Setup map
 function initMap(lat = 51.505, lng = -0.09, zoom = 13) {
@@ -16,60 +11,80 @@ function initMap(lat = 51.505, lng = -0.09, zoom = 13) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
   }).addTo(map);
-  path = L.polyline([], { color: '#2176ae', weight: 5 }).addTo(map);
-  marker = L.marker([lat, lng]).addTo(map);
 }
 
-// Update map with current position
-function updateMap(lat, lng) {
-  marker.setLatLng([lat, lng]);
-  path.addLatLng([lat, lng]);
-  map.panTo([lat, lng]);
+function addPin(lat, lng, info) {
+  const marker = L.marker([lat, lng]).addTo(map);
+  marker.bindPopup(info).openPopup();
+  markers.push(marker);
+}
+
+function clearPins() {
+  markers.forEach(marker => map.removeLayer(marker));
+  markers = [];
+}
+
+function drawPath(points) {
+  if (path) {
+    map.removeLayer(path);
+  }
+  path = L.polyline(points, { color: '#2176ae', weight: 5 }).addTo(map);
+  if (points.length) {
+    map.fitBounds(path.getBounds());
+  }
 }
 
 // Start journey recording
 function startJourney() {
   if (!navigator.geolocation) {
-    statusDiv.textContent = "Geolocation is not supported!";
+    document.getElementById('status').textContent = "Geolocation is not supported!";
     return;
   }
   started = true;
   journey = [];
-  path.setLatLngs([]);
-  statusDiv.textContent = "Journey recording started...";
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  downloadBtn.disabled = true;
+  clearPins();
+  if (path) {
+    map.removeLayer(path);
+    path = null;
+  }
+  document.getElementById('status').textContent = "Recording journey with pins...";
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('downloadBtn').disabled = true;
 
   watchId = navigator.geolocation.watchPosition(
     pos => {
       const { latitude, longitude, accuracy, timestamp } = pos.coords;
       journey.push({ latitude, longitude, accuracy, timestamp });
-      updateMap(latitude, longitude);
-      statusDiv.textContent = `Location: (${latitude.toFixed(5)}, ${longitude.toFixed(5)}) | Accuracy: ${accuracy}m`;
+      addPin(latitude, longitude, `Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}<br>Accuracy: ${accuracy}m`);
+      map.panTo([latitude, longitude]);
+      document.getElementById('status').textContent = `Pin placed at (${latitude.toFixed(5)}, ${longitude.toFixed(5)}) | Accuracy: ${accuracy}m`;
     },
     err => {
-      statusDiv.textContent = "Location error: " + err.message;
+      document.getElementById('status').textContent = "Location error: " + err.message;
     },
     {
-      enableHighAccuracy: true, // Try to use GPS + cellular
+      enableHighAccuracy: true,
       maximumAge: 0,
       timeout: 10000
     }
   );
 }
 
-// Stop journey recording
+// When stopped, show path line, remove pins
 function stopJourney() {
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
   }
   started = false;
-  stopBtn.disabled = true;
-  startBtn.disabled = false;
-  downloadBtn.disabled = journey.length === 0;
-  statusDiv.textContent = "Journey recording stopped.";
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('downloadBtn').disabled = journey.length === 0;
+  document.getElementById('status').textContent = "Journey stopped. Showing path.";
+  clearPins();
+  const points = journey.map(j => [j.latitude, j.longitude]);
+  drawPath(points);
 }
 
 // Download journey as JSON
@@ -82,25 +97,24 @@ function downloadJourney() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  statusDiv.textContent = "Journey downloaded!";
+  document.getElementById('status').textContent = "Journey downloaded!";
 }
 
-// Event listeners
-startBtn.addEventListener('click', startJourney);
-stopBtn.addEventListener('click', stopJourney);
-downloadBtn.addEventListener('click', downloadJourney);
+// Controls
+document.getElementById('startBtn').addEventListener('click', startJourney);
+document.getElementById('stopBtn').addEventListener('click', stopJourney);
+document.getElementById('downloadBtn').addEventListener('click', downloadJourney);
 
-// On page load, get location and initialize map
+// On load, center map on current location
 window.onload = function() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       pos => {
         const { latitude, longitude } = pos.coords;
         initMap(latitude, longitude, 16);
-        updateMap(latitude, longitude);
       },
       () => {
-        initMap(); // Default map
+        initMap();
       }
     );
   } else {
