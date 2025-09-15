@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Advanced GPS Journey Recorder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="controls">
+    <button id="startBtn">Start Journey</button>
+    <button id="stopBtn" disabled>Stop Journey</button>
+    <button id="downloadBtn" disabled>Download Journey</button>
+    <div id="status"></div>
+  </div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
