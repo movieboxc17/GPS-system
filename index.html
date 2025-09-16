@@ -19,6 +19,7 @@
     #accuracyLabel { font-size:1em; margin-right:6px;}
     #chart-container { background:#fff; border-radius:8px; padding:8px; margin:8px 0;}
     #chart { width:100%; height:140px;}
+    #toggleGraph { background:#464646; }
     @media (max-width:600px) { #controls{flex-direction:column; gap:7px;} #stats,#status{margin-left:0;} #map{height:45vh;} #chart{height:110px;} }
   </style>
 </head>
@@ -32,6 +33,7 @@
     <button id="resetBtn" disabled>Reset</button>
     <label id="accuracyLabel" for="accuracyInput">Min Acc (m):</label>
     <input type="number" id="accuracyInput" value="15" min="5" max="50" step="1">
+    <button id="toggleGraph">Hide Graph</button>
     <div id="stats"></div>
     <div id="status"></div>
   </div>
@@ -49,7 +51,7 @@
       function toRad(x) { return x * Math.PI / 180; }
       const R = 6371e3;
       const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
+      const dLon = toRad(lat2 - lon1);
       const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
@@ -88,6 +90,7 @@
     let minAccuracy = 15;
     let accuracyList = [];
     let chart = null;
+    let graphVisible = true;
 
     // --- Chart.js Accuracy Graph ---
     function setupChart() {
@@ -323,6 +326,13 @@
       chart.data.datasets[0].data = accuracyList.slice();
       chart.update();
     }
+
+    // --- Show/Hide Graph ---
+    document.getElementById('toggleGraph').addEventListener('click', function() {
+      graphVisible = !graphVisible;
+      document.getElementById('chart-container').style.display = graphVisible ? 'block' : 'none';
+      this.textContent = graphVisible ? 'Hide Graph' : 'Show Graph';
+    });
 
     // --- Event Listeners ---
     document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage();});
