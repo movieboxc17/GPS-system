@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Improved GPS Journey Recorder</title>
+  <title>Persistent GPS Journey Recorder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Leaflet CSS for OpenStreetMap -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body {
@@ -77,17 +76,8 @@
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Variables
-    let map, path, watchId;
-    let journey = [];
-    let markers = [];
-    let started = false;
-    let startTime = null;
-    let timerInterval = null;
-
     // Utility functions
     function haversine(lat1, lon1, lat2, lon2) {
-      // Returns distance in meters between two lat/lng points
       function toRad(x) { return x * Math.PI / 180; }
       const R = 6371e3;
       const dLat = toRad(lat2 - lat1);
@@ -109,6 +99,33 @@
       const d = new Date(ts);
       return d.toLocaleTimeString();
     }
+
+    // Persistent storage
+    function saveToStorage() {
+      localStorage.setItem('journey_gps', JSON.stringify({
+        journey,
+        started,
+        startTime,
+      }));
+    }
+    function loadFromStorage() {
+      const d = localStorage.getItem('journey_gps');
+      if (!d) return null;
+      try {
+        return JSON.parse(d);
+      } catch (e) { return null; }
+    }
+    function clearStorage() {
+      localStorage.removeItem('journey_gps');
+    }
+
+    // Variables
+    let map, path, watchId;
+    let journey = [];
+    let markers = [];
+    let started = false;
+    let startTime = null;
+    let timerInterval = null;
 
     // Map setup
     function initMap(lat = 51.505, lng = -0.09, zoom = 13) {
@@ -170,7 +187,7 @@
       let speed = journey.length > 1 && "speed" in journey[journey.length-1] && journey[journey.length-1].speed !== null
         ? (journey[journey.length-1].speed * 3.6).toFixed(1) + ' km/h'
         : '-';
-      document.getElementById('stats').innerHTML = 
+      document.getElementById('stats').innerHTML =
         `Distance: <b>${dist} m</b> | Time: <b>${formatTime(elapsed)}</b> | Speed: <b>${speed}</b>`;
     }
 
@@ -185,14 +202,14 @@
         return;
       }
       started = true;
-      journey = [];
+      saveToStorage();
       clearPins();
       if (path) { map.removeLayer(path); path = null; }
       document.getElementById('startBtn').disabled = true;
       document.getElementById('stopBtn').disabled = false;
       document.getElementById('resetBtn').disabled = false;
       document.getElementById('downloadBtn').disabled = true;
-      startTime = Date.now();
+      if (!startTime) startTime = Date.now();
       updateStatsDisplay();
       updateStatusDisplay("Recording journey with pins...");
       timerInterval = setInterval(updateStatsDisplay, 1000);
@@ -201,6 +218,7 @@
         pos => {
           const { latitude, longitude, accuracy, timestamp, speed } = pos.coords;
           journey.push({ latitude, longitude, accuracy, timestamp, speed: speed !== undefined ? speed : null });
+          saveToStorage();
           const infoHTML = `
             <b>Lat:</b> ${latitude.toFixed(5)}<br>
             <b>Lng:</b> ${longitude.toFixed(5)}<br>
@@ -224,12 +242,13 @@
       );
     }
 
-    function stopJourney() {
+    function stopJourney(save=true) {
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
       }
       started = false;
+      if (save) saveToStorage();
       document.getElementById('stopBtn').disabled = true;
       document.getElementById('startBtn').disabled = false;
       document.getElementById('downloadBtn').disabled = journey.length === 0;
@@ -270,21 +289,82 @@
       updateStatsDisplay();
       updateStatusDisplay("Journey reset.");
       if (timerInterval) clearInterval(timerInterval);
+      clearStorage();
+    }
+
+    // Restore pins (if any) on reload
+    function restorePins() {
+      clearPins();
+      journey.forEach(j => {
+        const infoHTML = `
+          <b>Lat:</b> ${j.latitude.toFixed(5)}<br>
+          <b>Lng:</b> ${j.longitude.toFixed(5)}<br>
+          <b>Accuracy:</b> ${j.accuracy} m<br>
+          <b>Speed:</b> ${j.speed !== undefined && j.speed !== null ? (j.speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}<br>
+          <b>Time:</b> ${formatDate(j.timestamp)}
+        `;
+        addPin(j.latitude, j.longitude, infoHTML);
+      });
+      if (journey.length) map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
+    }
+
+    // Restore path on reload
+    function restorePath() {
+      clearPins();
+      if (journey.length) {
+        drawPath(journey.map(j => [j.latitude, j.longitude]), false);
+        map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
+      }
     }
 
     // Event listeners
-    document.getElementById('startBtn').addEventListener('click', startJourney);
-    document.getElementById('stopBtn').addEventListener('click', stopJourney);
+    document.getElementById('startBtn').addEventListener('click', function() {
+      startJourney();
+      saveToStorage();
+    });
+    document.getElementById('stopBtn').addEventListener('click', function() {
+      stopJourney(true);
+      saveToStorage();
+    });
     document.getElementById('downloadBtn').addEventListener('click', downloadJourney);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
 
-    // On load, center map on current location
+    // On load, restore journey if present
     window.onload = function() {
+      let d = loadFromStorage();
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
             const { latitude, longitude } = pos.coords;
             initMap(latitude, longitude, 16);
+            // Restore journey
+            if (d && d.journey && d.journey.length) {
+              journey = d.journey;
+              startTime = d.startTime;
+              started = !!d.started;
+              updateStatsDisplay();
+              if (started) {
+                restorePins();
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = true;
+                updateStatusDisplay("Resumed journey recording. Pins restored.");
+                timerInterval = setInterval(updateStatsDisplay, 1000);
+                // Resume recording
+                startJourney();
+              } else {
+                restorePath();
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('resetBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = journey.length === 0;
+                updateStatusDisplay("Journey loaded. Path restored.");
+              }
+            } else {
+              document.getElementById('resetBtn').disabled = true;
+              updateStatusDisplay("Ready.");
+            }
           },
           () => {
             initMap();
@@ -293,7 +373,6 @@
       } else {
         initMap();
       }
-      document.getElementById('resetBtn').disabled = true;
     };
   </script>
 </body>
