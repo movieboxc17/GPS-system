@@ -2,9 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Persistent GPS Journey Recorder</title>
+  <title>Efficient GPS Journey Recorder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <style>
     body {
       margin: 0;
@@ -74,7 +78,10 @@
     <div id="status"></div>
   </div>
   <div id="map"></div>
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Leaflet.markercluster JS -->
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script>
     // Utility functions
     function haversine(lat1, lon1, lat2, lon2) {
@@ -99,8 +106,6 @@
       const d = new Date(ts);
       return d.toLocaleTimeString();
     }
-
-    // Persistent storage
     function saveToStorage() {
       localStorage.setItem('journey_gps', JSON.stringify({
         journey,
@@ -122,7 +127,7 @@
     // Variables
     let map, path, watchId;
     let journey = [];
-    let markers = [];
+    let markerCluster = null;
     let started = false;
     let startTime = null;
     let timerInterval = null;
@@ -135,15 +140,27 @@
       }).addTo(map);
     }
 
-    function addPin(lat, lng, infoHTML) {
-      const marker = L.marker([lat, lng]).addTo(map);
+    function createClusterGroup() {
+      if (markerCluster) {
+        markerCluster.clearLayers();
+        map.removeLayer(markerCluster);
+      }
+      markerCluster = L.markerClusterGroup();
+      map.addLayer(markerCluster);
+    }
+
+    function addPinToCluster(lat, lng, infoHTML) {
+      const marker = L.marker([lat, lng]);
       marker.bindPopup(infoHTML);
-      markers.push(marker);
+      markerCluster.addLayer(marker);
     }
 
     function clearPins() {
-      markers.forEach(marker => map.removeLayer(marker));
-      markers = [];
+      if (markerCluster) {
+        markerCluster.clearLayers();
+        map.removeLayer(markerCluster);
+        markerCluster = null;
+      }
     }
 
     function drawPath(points, animate=false) {
@@ -204,6 +221,7 @@
       started = true;
       saveToStorage();
       clearPins();
+      createClusterGroup();
       if (path) { map.removeLayer(path); path = null; }
       document.getElementById('startBtn').disabled = true;
       document.getElementById('stopBtn').disabled = false;
@@ -211,7 +229,7 @@
       document.getElementById('downloadBtn').disabled = true;
       if (!startTime) startTime = Date.now();
       updateStatsDisplay();
-      updateStatusDisplay("Recording journey with pins...");
+      updateStatusDisplay("Recording journey with clustered pins...");
       timerInterval = setInterval(updateStatsDisplay, 1000);
 
       watchId = navigator.geolocation.watchPosition(
@@ -226,7 +244,7 @@
             <b>Speed:</b> ${speed !== undefined && speed !== null ? (speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}<br>
             <b>Time:</b> ${formatDate(timestamp)}
           `;
-          addPin(latitude, longitude, infoHTML);
+          addPinToCluster(latitude, longitude, infoHTML);
           map.panTo([latitude, longitude]);
           updateStatsDisplay();
           updateStatusDisplay(`Pin: (${latitude.toFixed(5)}, ${longitude.toFixed(5)}) | Acc: ${accuracy}m${speed !== undefined && speed !== null ? " | Speed: " + (speed * 3.6).toFixed(1) + " km/h" : ""}`);
@@ -295,6 +313,7 @@
     // Restore pins (if any) on reload
     function restorePins() {
       clearPins();
+      createClusterGroup();
       journey.forEach(j => {
         const infoHTML = `
           <b>Lat:</b> ${j.latitude.toFixed(5)}<br>
@@ -303,7 +322,7 @@
           <b>Speed:</b> ${j.speed !== undefined && j.speed !== null ? (j.speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}<br>
           <b>Time:</b> ${formatDate(j.timestamp)}
         `;
-        addPin(j.latitude, j.longitude, infoHTML);
+        addPinToCluster(j.latitude, j.longitude, infoHTML);
       });
       if (journey.length) map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
     }
