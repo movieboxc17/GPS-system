@@ -2,48 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ultra Accurate GPS Journey Recorder</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <title>Pro GPS Journey Recorder</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css">
   <style>
-    body { margin:0; font-family: Arial,sans-serif; background:#f8f8f8;}
-    #controls { padding:1em; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,0.07); z-index:1000; position:relative; display:flex; flex-wrap:wrap; align-items:center; gap:10px;}
-    button { padding:0.5em 1em; font-size:1em; border:none; background:#2176ae; color:#fff; border-radius:4px; cursor:pointer; transition:background 0.2s;}
+    body { margin:0; font-family:Arial,sans-serif; background:#f8f8f8;}
+    #controls { padding:.5em 1em; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,.07); display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    button { padding:.4em 1em; font-size:1em; border:none; background:#2176ae; color:#fff; border-radius:4px; cursor:pointer; transition:background .2s;}
     button:disabled { background:#bbb; cursor:not-allowed;}
-    #status { color:#444; font-size:0.95em; flex:1 1 250px;}
+    #status { color:#444; font-size:.95em; flex:1 1 250px;}
     #stats { color:#2176ae; font-size:1em; font-weight:bold; margin-left:10px; flex:1 1 250px;}
-    #map { width:100vw; height:80vh; min-height:400px;}
-    #accuracyInput { border-radius:4px; border:1px solid #bbb; padding:4px; width:70px;}
+    #map { width:100vw; height:55vh; min-height:300px;}
+    #accuracyInput { border-radius:4px; border:1px solid #bbb; padding:4px; width:60px;}
     #accuracyLabel { font-size:1em; margin-right:6px;}
-    @media (max-width:600px) { #controls{flex-direction:column; gap:7px;} #stats,#status{margin-left:0;} }
+    #chart-container { background:#fff; border-radius:8px; padding:8px; margin:8px 0;}
+    #chart { width:100%; height:140px;}
+    @media (max-width:600px) { #controls{flex-direction:column; gap:7px;} #stats,#status{margin-left:0;} #map{height:45vh;} #chart{height:110px;} }
   </style>
 </head>
 <body>
   <div id="controls">
-    <button id="startBtn">Start Journey</button>
-    <button id="stopBtn" disabled>Stop Journey</button>
-    <button id="downloadBtn" disabled>Download Journey</button>
+    <button id="startBtn">Start</button>
+    <button id="pauseBtn" disabled>Pause</button>
+    <button id="resumeBtn" disabled>Resume</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <button id="downloadBtn" disabled>Download</button>
     <button id="resetBtn" disabled>Reset</button>
-    <label id="accuracyLabel" for="accuracyInput">Min Accuracy (m):</label>
-    <input type="number" id="accuracyInput" value="20" min="5" max="100" step="1">
+    <label id="accuracyLabel" for="accuracyInput">Min Acc (m):</label>
+    <input type="number" id="accuracyInput" value="15" min="5" max="50" step="1">
     <div id="stats"></div>
     <div id="status"></div>
   </div>
+  <div id="chart-container">
+    <canvas id="chart"></canvas>
+  </div>
   <div id="map"></div>
+  <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // Utility functions
+    // --- Utility ---
     function haversine(lat1, lon1, lat2, lon2) {
       function toRad(x) { return x * Math.PI / 180; }
       const R = 6371e3;
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
@@ -60,10 +67,7 @@
     }
     function saveToStorage() {
       localStorage.setItem('journey_gps', JSON.stringify({
-        journey,
-        started,
-        startTime,
-        minAccuracy
+        journey, started, paused, startTime, minAccuracy, accuracyList
       }));
     }
     function loadFromStorage() {
@@ -73,165 +77,188 @@
     }
     function clearStorage() { localStorage.removeItem('journey_gps'); }
 
-    // Variables
+    // --- Variables ---
     let map, path, watchId;
     let journey = [];
     let markerCluster = null;
     let started = false;
+    let paused = false;
     let startTime = null;
     let timerInterval = null;
-    let minAccuracy = 20;
+    let minAccuracy = 15;
+    let accuracyList = [];
+    let chart = null;
 
-    // Map setup
+    // --- Chart.js Accuracy Graph ---
+    function setupChart() {
+      const ctx = document.getElementById('chart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: [], datasets: [{
+          label: 'Accuracy (m)', data: [], borderColor: '#2176ae', backgroundColor: 'rgba(33,118,174,0.1)', tension: 0.2, pointRadius: 0,
+        }]},
+        options: {
+          scales: { x: {display:false}, y: {beginAtZero:true, title:{display:true,text:'Meters'}} },
+          plugins: { legend: {display:false} }
+        }
+      });
+    }
+    function updateChart(acc) {
+      if (!chart) return;
+      chart.data.labels.push('');
+      chart.data.datasets[0].data.push(acc);
+      if (chart.data.labels.length > 100) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    }
+
+    // --- Map Setup ---
     function initMap(lat = 51.505, lng = -0.09, zoom = 13) {
       map = L.map('map').setView([lat, lng], zoom);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
-      }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
     }
     function createClusterGroup() {
-      if (markerCluster) {
-        markerCluster.clearLayers();
-        map.removeLayer(markerCluster);
-      }
+      if (markerCluster) { markerCluster.clearLayers(); map.removeLayer(markerCluster); }
       markerCluster = L.markerClusterGroup();
       map.addLayer(markerCluster);
     }
+    function pinColor(accuracy) {
+      if (accuracy < 8) return 'green';
+      if (accuracy < 15) return 'yellow';
+      if (accuracy < 25) return 'orange';
+      return 'red';
+    }
     function addPinToCluster(lat, lng, infoHTML, accuracy) {
-      // Color by accuracy: <10m green, <minAccuracy orange, else red
-      let color = accuracy < 10 ? 'green' : (accuracy <= minAccuracy ? 'orange' : 'red');
       const marker = L.circleMarker([lat, lng], {
-        radius: 8,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.8,
-        weight: 2
+        radius: 8, color: pinColor(accuracy), fillColor: pinColor(accuracy), fillOpacity: .85, weight: 2
       });
       marker.bindPopup(infoHTML);
       markerCluster.addLayer(marker);
     }
     function clearPins() {
-      if (markerCluster) {
-        markerCluster.clearLayers();
-        map.removeLayer(markerCluster);
-        markerCluster = null;
-      }
+      if (markerCluster) { markerCluster.clearLayers(); map.removeLayer(markerCluster); markerCluster = null; }
     }
     function drawPath(points, animate=false) {
       if (path) map.removeLayer(path);
-      path = L.polyline([], { color: '#2176ae', weight: 5 }).addTo(map);
+      path = L.polyline([], { color:'#2176ae', weight:5 }).addTo(map);
       if (animate && points.length > 1) {
-        let i = 0;
+        let i=0;
         function addNext() {
-          if (i < points.length) {
-            path.addLatLng(points[i]);
-            i++;
-            setTimeout(addNext, 80);
-          } else {
-            map.fitBounds(path.getBounds());
-          }
+          if (i < points.length) { path.addLatLng(points[i]); i++; setTimeout(addNext, 40); }
+          else { map.fitBounds(path.getBounds()); }
         }
         addNext();
-      } else {
-        path.setLatLngs(points);
-        if (points.length) map.fitBounds(path.getBounds());
-      }
+      } else { path.setLatLngs(points); if(points.length) map.fitBounds(path.getBounds()); }
     }
-    function updateStatsDisplay() {
-      if (!journey.length) {
-        document.getElementById('stats').textContent = '';
-        return;
-      }
-      // Distance
-      let dist = 0;
-      for (let i = 1; i < journey.length; i++) {
-        dist += haversine(
-          journey[i-1].latitude, journey[i-1].longitude,
-          journey[i].latitude, journey[i].longitude
-        );
-      }
-      dist = Math.round(dist);
-      // Time
-      let elapsed = startTime ? Date.now() - startTime : 0;
-      // Speed
-      let speed = journey.length > 1 && "speed" in journey[journey.length-1] && journey[journey.length-1].speed !== null
-        ? (journey[journey.length-1].speed * 3.6).toFixed(1) + ' km/h'
-        : '-';
-      // Average Accuracy
-      let avgAcc = (journey.reduce((a,j)=>a+j.accuracy,0)/journey.length).toFixed(1);
-      document.getElementById('stats').innerHTML =
-        `Distance: <b>${dist} m</b> | Time: <b>${formatTime(elapsed)}</b> | Speed: <b>${speed}</b> | Avg Accuracy: <b>${avgAcc} m</b>`;
-    }
-    function updateStatusDisplay(text) {
-      document.getElementById('status').textContent = text;
+    function updateLivePath() {
+      // Draw path live while recording
+      const points = journey.map(j => [j.latitude, j.longitude]);
+      if (path) map.removeLayer(path);
+      path = L.polyline(points, { color:'#2176ae', weight:5 }).addTo(map);
+      if (points.length) map.panTo(points[points.length-1]);
     }
 
-    // Button actions
-    function startJourney() {
-      if (!navigator.geolocation) {
-        updateStatusDisplay("Geolocation is not supported!");
-        return;
+    // --- Stats ---
+    function updateStatsDisplay() {
+      if (!journey.length) { document.getElementById('stats').textContent = ''; return; }
+      let dist = 0;
+      for (let i=1; i<journey.length; i++) {
+        dist += haversine(journey[i-1].latitude, journey[i-1].longitude, journey[i].latitude, journey[i].longitude);
       }
-      started = true;
-      saveToStorage();
-      clearPins();
-      createClusterGroup();
-      if (path) { map.removeLayer(path); path = null; }
+      dist = Math.round(dist);
+      let elapsed = startTime ? Date.now() - startTime : 0;
+      let speed = journey.length > 1 && journey[journey.length-1].speed !== null
+        ? (journey[journey.length-1].speed*3.6).toFixed(1) + ' km/h' : '-';
+      let avgAcc = (journey.reduce((a,j)=>a+j.accuracy,0)/journey.length).toFixed(1);
+      document.getElementById('stats').innerHTML =
+        `Distance: <b>${dist} m</b> | Time: <b>${formatTime(elapsed)}</b> | Speed: <b>${speed}</b> | Avg Acc: <b>${avgAcc} m</b>`;
+    }
+    function updateStatusDisplay(text) { document.getElementById('status').textContent = text; }
+
+    // --- Recording ---
+    function startJourney() {
+      if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!"); return; }
+      started = true; paused = false; saveToStorage();
+      clearPins(); createClusterGroup();
       document.getElementById('startBtn').disabled = true;
+      document.getElementById('pauseBtn').disabled = false;
+      document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = false;
       document.getElementById('resetBtn').disabled = false;
       document.getElementById('downloadBtn').disabled = true;
-      document.getElementById('accuracyInput').disabled = true;
+      document.getElementById('accuracyInput').disabled = false;
       if (!startTime) startTime = Date.now();
-      updateStatsDisplay();
-      updateStatusDisplay("Recording journey with clustered pins...");
+      updateStatsDisplay(); updateStatusDisplay("Recording...");
       timerInterval = setInterval(updateStatsDisplay, 1000);
 
       watchId = navigator.geolocation.watchPosition(
         pos => {
+          if (paused) return;
           const { latitude, longitude, accuracy, timestamp, speed, heading } = pos.coords;
           // Only record if accuracy meets threshold
           if (accuracy <= minAccuracy) {
-            journey.push({ latitude, longitude, accuracy, timestamp, speed: speed !== undefined ? speed : null, heading: heading !== undefined ? heading : null });
+            // Smoothing: moving average with last 2 points (if available)
+            let lat = latitude, lng = longitude;
+            if (journey.length >= 2) {
+              lat = (journey[journey.length-1].latitude + journey[journey.length-2].latitude + latitude)/3;
+              lng = (journey[journey.length-1].longitude + journey[journey.length-2].longitude + longitude)/3;
+            }
+            journey.push({ latitude:lat, longitude:lng, accuracy, timestamp, speed: speed!==undefined?speed:null, heading: heading!==undefined?heading:null });
+            accuracyList.push(accuracy);
             saveToStorage();
             const infoHTML = `
-              <b>Lat:</b> ${latitude.toFixed(5)}<br>
-              <b>Lng:</b> ${longitude.toFixed(5)}<br>
+              <b>Lat:</b> ${lat.toFixed(5)}<br>
+              <b>Lng:</b> ${lng.toFixed(5)}<br>
               <b>Accuracy:</b> ${accuracy} m<br>
-              <b>Speed:</b> ${speed !== undefined && speed !== null ? (speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}<br>
-              <b>Heading:</b> ${heading !== undefined && heading !== null ? heading.toFixed(1) + '°' : 'N/A'}<br>
+              <b>Speed:</b> ${speed!==undefined && speed!==null ? (speed*3.6).toFixed(1)+' km/h':'N/A'}<br>
+              <b>Heading:</b> ${heading!==undefined && heading!==null ? heading.toFixed(1)+'°':'N/A'}<br>
               <b>Time:</b> ${formatDate(timestamp)}
             `;
-            addPinToCluster(latitude, longitude, infoHTML, accuracy);
-            map.panTo([latitude, longitude]);
+            addPinToCluster(lat, lng, infoHTML, accuracy);
+            updateLivePath();
             updateStatsDisplay();
-            updateStatusDisplay(`Pin: (${latitude.toFixed(5)}, ${longitude.toFixed(5)}) | Acc: ${accuracy}m${speed !== undefined && speed !== null ? " | Speed: " + (speed * 3.6).toFixed(1) + " km/h" : ""}`);
+            updateStatusDisplay(`Pin: (${lat.toFixed(5)}, ${lng.toFixed(5)}) | Acc: ${accuracy}m`);
+            updateChart(accuracy);
           } else {
-            updateStatusDisplay(`Ignored inaccurate point (${accuracy}m > ${minAccuracy}m)`);
+            updateStatusDisplay(`Ignored inaccurate (${accuracy}m > ${minAccuracy}m)`);
+            updateChart(accuracy);
           }
         },
-        err => {
-          updateStatusDisplay("Location error: " + err.message);
-        },
+        err => { updateStatusDisplay("Location error: "+err.message); },
         {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 3000 // Request new position every 3 seconds
+          enableHighAccuracy:true,
+          maximumAge:0,
+          timeout:1000 // 1 second for highest frequency possible
         }
       );
     }
+    function pauseJourney() {
+      paused = true;
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('resumeBtn').disabled = false;
+      updateStatusDisplay("Paused.");
+      saveToStorage();
+    }
+    function resumeJourney() {
+      paused = false;
+      document.getElementById('resumeBtn').disabled = true;
+      document.getElementById('pauseBtn').disabled = false;
+      updateStatusDisplay("Resumed recording.");
+      saveToStorage();
+    }
     function stopJourney(save=true) {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-      started = false;
+      if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
+      started = false; paused = false;
       if (save) saveToStorage();
-      document.getElementById('stopBtn').disabled = true;
       document.getElementById('startBtn').disabled = false;
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('resumeBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = true;
       document.getElementById('downloadBtn').disabled = journey.length === 0;
       document.getElementById('accuracyInput').disabled = false;
-      updateStatusDisplay("Journey stopped. Path drawn.");
+      updateStatusDisplay("Stopped. Path drawn.");
       clearPins();
       const points = journey.map(j => [j.latitude, j.longitude]);
       drawPath(points, true);
@@ -239,106 +266,111 @@
       if (timerInterval) clearInterval(timerInterval);
     }
     function downloadJourney() {
-      const blob = new Blob([JSON.stringify(journey, null, 2)], {type: "application/json"});
+      const blob = new Blob([JSON.stringify(journey,null,2)], {type:"application/json"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = "journey.json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      a.href = url; a.download = "journey.json";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       updateStatusDisplay("Journey downloaded!");
     }
     function resetAll() {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-      started = false;
-      journey = [];
+      if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
+      started = false; paused = false; journey = [];
       clearPins();
-      if (path) { map.removeLayer(path); path = null; }
+      if (path) { map.removeLayer(path); path=null; }
       document.getElementById('startBtn').disabled = false;
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = true;
       document.getElementById('downloadBtn').disabled = true;
       document.getElementById('resetBtn').disabled = true;
       document.getElementById('accuracyInput').disabled = false;
-      startTime = null;
+      startTime = null; accuracyList = [];
+      if (chart) { chart.data.labels=[]; chart.data.datasets[0].data=[]; chart.update(); }
       updateStatsDisplay();
-      updateStatusDisplay("Journey reset.");
+      updateStatusDisplay("Reset.");
       if (timerInterval) clearInterval(timerInterval);
       clearStorage();
     }
-    // Restore pins (if any) on reload
+
+    // --- Restore ---
     function restorePins() {
-      clearPins();
-      createClusterGroup();
+      clearPins(); createClusterGroup();
       journey.forEach(j => {
         const infoHTML = `
           <b>Lat:</b> ${j.latitude.toFixed(5)}<br>
           <b>Lng:</b> ${j.longitude.toFixed(5)}<br>
           <b>Accuracy:</b> ${j.accuracy} m<br>
-          <b>Speed:</b> ${j.speed !== undefined && j.speed !== null ? (j.speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}<br>
-          <b>Heading:</b> ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}<br>
+          <b>Speed:</b> ${j.speed!==undefined && j.speed!==null ? (j.speed*3.6).toFixed(1)+' km/h':'N/A'}<br>
+          <b>Heading:</b> ${j.heading!==undefined && j.heading!==null ? j.heading.toFixed(1)+'°':'N/A'}<br>
           <b>Time:</b> ${formatDate(j.timestamp)}
         `;
         addPinToCluster(j.latitude, j.longitude, infoHTML, j.accuracy);
       });
+      updateLivePath();
       if (journey.length) map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
     }
-    // Restore path on reload
     function restorePath() {
       clearPins();
       if (journey.length) {
-        drawPath(journey.map(j => [j.latitude, j.longitude]), false);
+        drawPath(journey.map(j=>[j.latitude,j.longitude]),false);
         map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
       }
     }
-    // Event listeners
-    document.getElementById('startBtn').addEventListener('click', function() {
-      startJourney();
-      saveToStorage();
-    });
-    document.getElementById('stopBtn').addEventListener('click', function() {
-      stopJourney(true);
-      saveToStorage();
-    });
+    function restoreChart() {
+      if (!chart) return;
+      chart.data.labels = Array(accuracyList.length).fill('');
+      chart.data.datasets[0].data = accuracyList.slice();
+      chart.update();
+    }
+
+    // --- Event Listeners ---
+    document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage();});
+    document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney();});
+    document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney();});
+    document.getElementById('stopBtn').addEventListener('click', function(){ stopJourney(true); saveToStorage();});
     document.getElementById('downloadBtn').addEventListener('click', downloadJourney);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
-    document.getElementById('accuracyInput').addEventListener('change', function(e) {
+    document.getElementById('accuracyInput').addEventListener('change', function(e){
       minAccuracy = Number(e.target.value);
       saveToStorage();
-      updateStatusDisplay('Minimum accuracy set to ' + minAccuracy + ' meters');
+      updateStatusDisplay('Min accuracy set to '+minAccuracy+' meters');
     });
-    // On load, restore journey if present
+
+    // --- On Load ---
     window.onload = function() {
+      setupChart();
       let d = loadFromStorage();
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            const { latitude, longitude } = pos.coords;
-            initMap(latitude, longitude, 16);
-            // Restore journey
+            const {latitude,longitude} = pos.coords;
+            initMap(latitude,longitude,16);
             if (d && d.journey && d.journey.length) {
-              journey = d.journey;
-              startTime = d.startTime;
-              started = !!d.started;
-              minAccuracy = d.minAccuracy || 20;
+              journey = d.journey; startTime = d.startTime;
+              started = !!d.started; paused = !!d.paused;
+              minAccuracy = d.minAccuracy || 15;
+              accuracyList = d.accuracyList || [];
               document.getElementById('accuracyInput').value = minAccuracy;
+              restoreChart();
               updateStatsDisplay();
               if (started) {
                 restorePins();
                 document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = !paused;
+                document.getElementById('resumeBtn').disabled = paused?false:true;
                 document.getElementById('stopBtn').disabled = false;
                 document.getElementById('resetBtn').disabled = false;
                 document.getElementById('downloadBtn').disabled = true;
-                document.getElementById('accuracyInput').disabled = true;
-                updateStatusDisplay("Resumed journey recording. Pins restored.");
-                timerInterval = setInterval(updateStatsDisplay, 1000);
-                startJourney();
+                document.getElementById('accuracyInput').disabled = false;
+                updateStatusDisplay(paused?"Paused":"Resumed recording.");
+                timerInterval = setInterval(updateStatsDisplay,1000);
+                if (!paused) startJourney();
               } else {
                 restorePath();
                 document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('resumeBtn').disabled = true;
                 document.getElementById('stopBtn').disabled = true;
                 document.getElementById('resetBtn').disabled = false;
                 document.getElementById('downloadBtn').disabled = journey.length === 0;
