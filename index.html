@@ -192,7 +192,8 @@
       <button id="pauseBtn" disabled title="Pause recording">Pause</button>
       <button id="resumeBtn" disabled title="Resume recording">Resume</button>
       <button id="stopBtn" disabled title="Stop and show path">Stop</button>
-      <button id="downloadBtn" disabled title="Download journey">Download</button>
+      <button id="downloadBtn" disabled title="Download journey JSON">Download</button>
+      <button id="downloadKmlBtn" disabled title="Download KML (Google Earth)">Download KML</button>
       <button id="resetBtn" disabled title="Reset journey">Reset</button>
     </div>
     <div class="control-group">
@@ -234,6 +235,9 @@
     function formatDate(ts) {
       const d = new Date(ts);
       return d.toLocaleTimeString();
+    }
+    function isoTime(ts) {
+      return new Date(ts).toISOString();
     }
     function saveToStorage() {
       localStorage.setItem('journey_gps', JSON.stringify({
@@ -348,6 +352,70 @@
     }
     function updateStatusDisplay(text) { document.getElementById('status').textContent = text; }
 
+    // --- KML Export ---
+    function journeyToKml(journey) {
+      if (!journey || journey.length === 0) return '';
+      // KML color is aabbggrr; '#2176ae' -> aabbggrr: ff ae 76 21
+      const pathColor = 'ffae7621';
+      const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
+
+      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
+      kml += `  <Document>\n`;
+      kml += `    <name>GPS Journey</name>\n`;
+      kml += `    <Style id="pathStyle"><LineStyle><color>${pathColor}</color><width>4</width></LineStyle></Style>\n`;
+      kml += `    <Placemark>\n`;
+      kml += `      <name>Path</name>\n`;
+      kml += `      <styleUrl>#pathStyle</styleUrl>\n`;
+      kml += `      <LineString>\n`;
+      kml += `        <tessellate>1</tessellate>\n`;
+      kml += `        <coordinates>\n${coordsLine}\n        </coordinates>\n`;
+      kml += `      </LineString>\n`;
+      kml += `    </Placemark>\n`;
+
+      // Points with details
+      kml += `    <Folder>\n`;
+      kml += `      <name>Points</name>\n`;
+      journey.forEach((j, idx) => {
+        const desc = [
+          `Lat: ${j.latitude.toFixed(6)}`,
+          `Lng: ${j.longitude.toFixed(6)}`,
+          `Accuracy: ${j.accuracy} m`,
+          `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1) + ' km/h' : 'N/A'}`,
+          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
+        ].join(' | ');
+        kml += `      <Placemark>\n`;
+        kml += `        <name>Point ${idx+1}</name>\n`;
+        kml += `        <TimeStamp><when>${isoTime(j.timestamp)}</when></TimeStamp>\n`;
+        kml += `        <description><![CDATA[${desc}]]></description>\n`;
+        kml += `        <Point><coordinates>${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0</coordinates></Point>\n`;
+        kml += `      </Placemark>\n`;
+      });
+      kml += `    </Folder>\n`;
+
+      // Start and end markers
+      const first = journey[0];
+      const last = journey[journey.length - 1];
+      kml += `    <Placemark><name>Start</name><TimeStamp><when>${isoTime(first.timestamp)}</when></TimeStamp><Point><coordinates>${first.longitude.toFixed(6)},${first.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
+      kml += `    <Placemark><name>End</name><TimeStamp><when>${isoTime(last.timestamp)}</when></TimeStamp><Point><coordinates>${last.longitude.toFixed(6)},${last.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
+
+      kml += `  </Document>\n`;
+      kml += `</kml>\n`;
+      return kml;
+    }
+
+    function downloadJourneyKML() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const kml = journeyToKml(journey);
+      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.kml";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("KML downloaded!");
+    }
+
     // --- Recording ---
     function startJourney() {
       if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!"); return; }
@@ -357,8 +425,9 @@
       document.getElementById('pauseBtn').disabled = false;
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = false;
-      document.getElementById('resetBtn').disabled = false;
       document.getElementById('downloadBtn').disabled = true;
+      document.getElementById('downloadKmlBtn').disabled = true;
+      document.getElementById('resetBtn').disabled = false;
       document.getElementById('accuracyInput').disabled = false;
       if (!startTime) startTime = Date.now();
       updateStatsDisplay(); updateStatusDisplay("Recording...");
@@ -427,7 +496,9 @@
       document.getElementById('pauseBtn').disabled = true;
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = true;
+      const canDownload = journey.length === 0 ? true : false; // convenience var not used, keep logic below
       document.getElementById('downloadBtn').disabled = journey.length === 0;
+      document.getElementById('downloadKmlBtn').disabled = journey.length === 0;
       document.getElementById('accuracyInput').disabled = false;
       updateStatusDisplay("Stopped. Path drawn.");
       clearPins();
@@ -442,7 +513,8 @@
       const a = document.createElement('a');
       a.href = url; a.download = "journey.json";
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      updateStatusDisplay("Journey downloaded!");
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("Journey JSON downloaded!");
     }
     function resetAll() {
       if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
@@ -454,6 +526,7 @@
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = true;
       document.getElementById('downloadBtn').disabled = true;
+      document.getElementById('downloadKmlBtn').disabled = true;
       document.getElementById('resetBtn').disabled = true;
       document.getElementById('accuracyInput').disabled = false;
       startTime = null; accuracyList = [];
@@ -509,6 +582,7 @@
     document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney();});
     document.getElementById('stopBtn').addEventListener('click', function(){ stopJourney(true); saveToStorage();});
     document.getElementById('downloadBtn').addEventListener('click', downloadJourney);
+    document.getElementById('downloadKmlBtn').addEventListener('click', downloadJourneyKML);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('accuracyInput').addEventListener('change', function(e){
       minAccuracy = Number(e.target.value);
@@ -541,6 +615,7 @@
                 document.getElementById('stopBtn').disabled = false;
                 document.getElementById('resetBtn').disabled = false;
                 document.getElementById('downloadBtn').disabled = true;
+                document.getElementById('downloadKmlBtn').disabled = true;
                 document.getElementById('accuracyInput').disabled = false;
                 updateStatusDisplay(paused?"Paused":"Resumed recording.");
                 timerInterval = setInterval(updateStatsDisplay,1000);
@@ -553,11 +628,14 @@
                 document.getElementById('stopBtn').disabled = true;
                 document.getElementById('resetBtn').disabled = false;
                 document.getElementById('downloadBtn').disabled = journey.length === 0;
+                document.getElementById('downloadKmlBtn').disabled = journey.length === 0;
                 document.getElementById('accuracyInput').disabled = false;
                 updateStatusDisplay("Journey loaded. Path restored.");
               }
             } else {
               document.getElementById('resetBtn').disabled = true;
+              document.getElementById('downloadBtn').disabled = true;
+              document.getElementById('downloadKmlBtn').disabled = true;
               document.getElementById('accuracyInput').disabled = false;
               updateStatusDisplay("Ready.");
             }
