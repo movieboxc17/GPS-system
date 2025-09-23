@@ -3,253 +3,360 @@
 <head>
   <meta charset="UTF-8">
   <title>GPS Journey Recorder - Mobile Enhanced</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css">
   <style>
     :root {
-      --main-bg: #f2f6fa;
+      --main-bg: #f4f7fb;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
       --accent: #2176ae;
+      --accent-contrast: #ffffff;
       --accent-dark: #195c83;
       --danger: #e53935;
-      --button-radius: 8px;
-      --control-padding: 12px;
+      --ok: #2e7d32;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --radius-sm: 10px;
+      --radius-xs: 8px;
+      --pad: 12px;
+      --gap: 10px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --main-bg: #0b1220;
+        --surface: #0f172a;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --accent: #5cc1ff;
+        --accent-contrast: #06121d;
+        --accent-dark: #2ea4dd;
+        --danger: #ff6b6b;
+        --ok: #52d273;
+        --warning: #f6c453;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
+        --shadow-md: 0 6px 24px rgba(0,0,0,.45);
+      }
+    }
+    /* App layout: fill the screen neatly on mobile & tablets */
+    html, body {
+      height: 100svh;
+      min-height: 100vh;
+      background: var(--main-bg);
+      color: var(--text);
     }
     body {
       margin: 0;
-      font-family: 'Roboto', Arial, sans-serif;
-      background: var(--main-bg);
-      color: #222;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      -webkit-tap-highlight-color: transparent;
+      scroll-behavior: smooth;
     }
+
+    /* Controls/App bar */
     #controls {
       position: sticky;
       top: 0;
-      background: #fff;
-      padding: var(--control-padding) 0 var(--control-padding) 0;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
       z-index: 1000;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      width: 100%;
-      border-bottom: 1px solid #e0e7ef;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(2, 6, 23, .08);
+      box-shadow: var(--shadow-sm);
+      padding: 8px max(10px, env(safe-area-inset-left)) 10px max(10px, env(safe-area-inset-right));
     }
-    .control-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    .controls-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--gap);
       align-items: center;
     }
-    .control-group.status-group {
-      flex: 1 1 200px;
-      min-width: 180px;
-      justify-content: flex-start;
+    @media (max-width: 840px) {
+      .controls-wrap {
+        grid-template-columns: 1fr;
+      }
     }
-    button, input[type=number] {
-      font-size: 1.05em;
-      border-radius: var(--button-radius);
-      border: none;
-      padding: 0.5em 1em;
-      min-width: 44px;
+    .control-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--gap);
       min-height: 44px;
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 1px 2px rgba(33,118,174,.06);
-      transition: background .2s;
-      outline: none;
     }
-    button:active {
-      background: var(--accent-dark);
-    }
-    button:disabled {
-      background: #bbb;
-      color: #eee;
-      cursor: not-allowed;
-    }
-    #toggleGraph {
-      background: #fff;
-      color: var(--accent);
-      border: 2px solid var(--accent);
-      min-width: 40px;
-      min-height: 40px;
-      font-size: 1.4em;
-      padding: 0.2em 0.6em;
-      margin-left: 6px;
-      border-radius: 50%;
-      vertical-align: middle;
-      display: flex;
+
+    /* Buttons */
+    .btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      border-radius: var(--radius-xs);
+      padding: 10px 14px;
+      font-size: 15px;
+      line-height: 1;
+      min-height: 44px;
+      min-width: 44px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .05s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
     }
-    #toggleGraph:active {
-      background: var(--main-bg);
+    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: var(--accent-contrast); }
+    .btn-primary:active { background: var(--accent-dark); }
+    .btn-outline {
+      background: transparent; color: var(--accent);
+      border: 2px solid var(--accent);
+    }
+    .btn-ghost {
+      background: transparent; color: var(--text);
+      border: 1px solid rgba(2, 6, 23, .08);
+    }
+    .btn-danger {
+      background: var(--danger); color: #fff;
+    }
+    .btn-chip {
+      background: #eaf4fb;
       color: var(--accent-dark);
+      border-radius: 999px;
+      padding: 8px 12px;
     }
-    label {
-      font-size: 1em;
-      margin-right: 6px;
-      color: var(--accent-dark);
+    @media (prefers-color-scheme: dark) {
+      .btn-chip { background: #0b2030; }
     }
-    #accuracyInput {
-      color: var(--accent-dark);
-      background: #e8f2fa;
-      border: 1px solid #b0cde0;
-      padding: 0.4em 0.8em;
-      margin-right: 6px;
-      width: 60px;
-      font-size: 1em;
-      border-radius: var(--button-radius);
+    .btn-icon {
+      padding: 10px;
+      width: 44px;
+      min-width: 44px;
+      justify-content: center;
     }
-    #chart-container {
-      background: #fff;
-      border-radius: 10px;
-      padding: 8px 8px 0 8px;
-      margin: 0 0 8px 0;
-      box-shadow: 0 2px 8px rgba(33,118,174,.04);
-      width: 96vw;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      display: block;
+
+    /* Segmented primary controls on large screens */
+    .btn-group {
+      display: inline-flex;
+      border-radius: var(--radius-xs);
+      overflow: clip;
+      border: 1px solid rgba(2,6,23,.08);
+      background: var(--surface);
     }
-    #chart {
-      width: 100%;
-      height: 120px;
-      max-height: 160px;
-      display: block;
+    .btn-group .btn {
+      border-radius: 0;
+      min-width: 64px;
+      border-right: 1px solid rgba(2,6,23,.08);
+      box-shadow: none;
     }
-    #map {
-      width: 100vw;
-      height: 60vh;
-      min-height: 260px;
-      border-radius: 0 0 12px 12px;
-      box-shadow: 0 4px 16px rgba(33,118,174,.07);
-      margin-bottom: 0;
-      background: #ddd;
-      display: block;
+    .btn-group .btn:last-child { border-right: 0; }
+    @media (max-width: 620px) {
+      .btn-group { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .btn-group .btn { min-width: 56px; }
     }
-    #stats, #status {
-      font-size: 1em;
-      padding: 2px 8px;
-      color: #333;
-      background: #e8f2fa;
-      border-radius: 6px;
-      margin: 0 6px 0 0;
-      min-width: 80px;
-      text-align: left;
-      display: inline-block;
+
+    /* Inputs */
+    .field {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef6fb;
+      color: var(--text);
+      padding: 6px 8px 6px 10px;
+      border-radius: var(--radius-xs);
+      border: 1px solid rgba(2,6,23,.08);
     }
-    #status {
-      color: #e53935;
-      background: #fff3f3;
-      border: 1px solid #f9c6c6;
+    @media (prefers-color-scheme: dark) {
+      .field { background: #0b2030; }
     }
-    @media (max-width:700px) {
-      #controls {
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px 0;
-      }
-      .control-group {
-        width: 100%;
-        justify-content: flex-start;
-      }
-      #chart-container {
-        width: 98vw;
-        max-width: 100vw;
-      }
-      #map {
-        height: 54vh;
-        min-height: 200px;
-      }
-      #stats, #status {
-        font-size: .96em;
-        min-width: 60px;
-      }
+    .field label { font-size: 14px; color: var(--muted); }
+    .field input[type=number] {
+      width: 70px;
+      font-size: 15px;
+      padding: 6px 8px;
+      border: 1px solid rgba(2,6,23,.08);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
     }
-    @media (max-width:480px) {
-      #controls { padding: 7px 0; }
-      button, input[type=number] {
-        font-size: .95em;
-        min-width: 32px;
-        min-height: 38px;
-        padding: 0.3em 0.7em;
-      }
-      #chart-container { padding: 2px 2px 0 2px; }
-      #chart { height: 80px; }
-      #map { min-height: 130px; height: 38vh; }
-    }
+
+    /* Download dropdown / bottom sheet */
     .dropdown { position: relative; display: inline-block; }
     .menu {
       position: absolute;
-      top: 100%;
-      left: 0;
-      background: #fff;
-      border: 1px solid #e0e7ef;
-      box-shadow: 0 4px 12px rgba(0,0,0,.08);
-      border-radius: 8px;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid rgba(2,6,23,.08);
+      box-shadow: var(--shadow-md);
+      border-radius: var(--radius);
       padding: 6px;
       display: none;
-      min-width: 220px;
+      min-width: 240px;
       z-index: 1100;
     }
     .menu.open { display: block; }
+    .menu .group-title {
+      font-size: 12px;
+      letter-spacing: .04em;
+      color: var(--muted);
+      padding: 6px 10px 4px 10px;
+      text-transform: uppercase;
+    }
     .menu .item {
       width: 100%;
       background: transparent;
-      color: #222;
+      color: var(--text);
       text-align: left;
       padding: 10px 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       border: none;
-      min-height: auto;
+      min-height: 40px;
       min-width: auto;
       box-shadow: none;
-      font-size: 1em;
+      font-size: 15px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .menu .item:hover { background: #f2f6fa; }
+    .menu .item:hover { background: rgba(2,6,23,.05); }
+    @media (prefers-color-scheme: dark) {
+      .menu .item:hover { background: rgba(255,255,255,.06); }
+    }
+    /* Bottom sheet on narrow screens */
+    @media (max-width: 540px) {
+      .menu {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        top: auto;
+        border-radius: 16px 16px 0 0;
+        padding-bottom: calc(6px + env(safe-area-inset-bottom));
+        margin: 0 auto;
+        max-width: 640px;
+      }
+    }
+
+    /* Status & stats chips */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    #stats, #status {
+      font-size: 14px;
+      padding: 8px 12px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid rgba(2,6,23,.08);
+      border-radius: 999px;
+    }
+    #status.ok { color: var(--ok); border-color: rgba(46,125,50,.25); }
+    #status.warn { color: var(--warning); border-color: rgba(245,158,11,.25); }
+    #status.err { color: var(--danger); border-color: rgba(229,57,53,.25); }
+
+    /* Chart & map containers fill the remaining space nicely */
+    #chart-container {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 8px 8px 0 8px;
+      margin: 10px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
+      box-shadow: var(--shadow-sm);
+      flex: 0 0 auto;
+    }
+    #chart { width: 100%; height: 120px; display: block; }
+
+    /* Map flexes to fill leftover height for perfect fit */
+    #map {
+      margin: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      background: #d0d7e2;
+      flex: 1 1 auto;
+      min-height: 260px;
+      overflow: clip;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 740px) {
+      .field input[type=number] { width: 64px; }
+      #chart { height: 100px; }
+    }
+    @media (max-width: 480px) {
+      .btn { min-height: 40px; font-size: 14px; padding: 9px 12px; }
+      .btn-icon { width: 40px; min-width: 40px; padding: 8px; }
+      #chart { height: 84px; }
+      #map { min-height: 220px; }
+    }
   </style>
 </head>
 <body>
+  <!-- App/controls bar -->
   <div id="controls">
-    <div class="control-group">
-      <button id="startBtn" title="Start recording">Start</button>
-      <button id="pauseBtn" disabled title="Pause recording">Pause</button>
-      <button id="resumeBtn" disabled title="Resume recording">Resume</button>
-      <button id="stopBtn" disabled title="Stop and show path">Stop</button>
-      <div class="dropdown">
-        <button id="downloadBtn" disabled title="Download">Download ▾</button>
-        <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
-          <button id="downloadJson" class="item" role="menuitem">JSON (with metadata)</button>
-          <button id="downloadKml" class="item" role="menuitem">KML (Google Earth)</button>
-          <button id="downloadGpx" class="item" role="menuitem">GPX (GPS Exchange)</button>
-          <button id="downloadCsv" class="item" role="menuitem">CSV</button>
-          <button id="downloadTsv" class="item" role="menuitem">TSV</button>
-          <button id="downloadTxt" class="item" role="menuitem">Plain Text Coordinates</button>
-          <button id="downloadGeoJson" class="item" role="menuitem">GeoJSON</button>
+    <div class="controls-wrap">
+      <!-- Primary controls -->
+      <div class="control-row" aria-label="Recording controls">
+        <div class="btn-group" role="group" aria-label="Record">
+          <button id="startBtn" class="btn btn-ghost" title="Start recording">▶️ Start</button>
+          <button id="pauseBtn" class="btn btn-ghost" disabled title="Pause recording">⏸️ Pause</button>
+          <button id="resumeBtn" class="btn btn-ghost" disabled title="Resume recording">▶️ Resume</button>
+          <button id="stopBtn" class="btn btn-ghost" disabled title="Stop and draw path">⏹️ Stop</button>
+        </div>
+
+        <div class="field" aria-label="Minimum accuracy">
+          <label id="accuracyLabel" for="accuracyInput">Min Acc</label>
+          <input type="number" id="accuracyInput" value="15" min="5" max="50" step="1" aria-labelledby="accuracyLabel">
+          <span class="unit" aria-hidden="true">m</span>
+        </div>
+
+        <button id="toggleGraph" class="btn btn-outline btn-icon" title="Show/hide accuracy graph" aria-pressed="true">📊</button>
+
+        <!-- Download dropdown -->
+        <div class="dropdown">
+          <button id="downloadBtn" class="btn btn-primary" disabled title="Download" aria-haspopup="menu" aria-expanded="false">⬇️ Download</button>
+          <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
+            <div class="group-title">Structured</div>
+            <button id="downloadJson" class="item" role="menuitem">🧾 JSON (with metadata)</button>
+            <button id="downloadGeoJson" class="item" role="menuitem">🗺️ GeoJSON</button>
+            <div class="group-title">GIS</div>
+            <button id="downloadKml" class="item" role="menuitem">🌍 KML (Google Earth)</button>
+            <button id="downloadGpx" class="item" role="menuitem">📍 GPX (GPS Exchange)</button>
+            <div class="group-title">Tables & Text</div>
+            <button id="downloadCsv" class="item" role="menuitem">📊 CSV</button>
+            <button id="downloadTsv" class="item" role="menuitem">📋 TSV</button>
+            <button id="downloadTxt" class="item" role="menuitem">📝 Plain Text (lat,lng)</button>
+          </div>
+        </div>
+
+        <button id="resetBtn" class="btn btn-danger" disabled title="Reset journey">♻️ Reset</button>
+      </div>
+
+      <!-- Status area -->
+      <div class="control-row" aria-live="polite">
+        <div class="chips">
+          <div id="stats" class="btn-chip"></div>
+          <div id="status" class="btn-chip"></div>
         </div>
       </div>
-      <button id="resetBtn" disabled title="Reset journey">Reset</button>
-    </div>
-    <div class="control-group">
-      <label id="accuracyLabel" for="accuracyInput">Min Acc (m):</label>
-      <input type="number" id="accuracyInput" value="15" min="5" max="50" step="1">
-      <button id="toggleGraph" title="Show/hide accuracy graph">&#128202;</button>
-    </div>
-    <div class="control-group status-group">
-      <div id="stats"></div>
-      <div id="status"></div>
     </div>
   </div>
+
+  <!-- Chart -->
   <div id="chart-container">
     <canvas id="chart"></canvas>
   </div>
+
+  <!-- Map -->
   <div id="map"></div>
+
   <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
@@ -257,7 +364,7 @@
   <script>
     // --- Utility ---
     function haversine(lat1, lon1, lat2, lon2) {
-      function toRad(x) { return x * Math.PI / 180; }
+      const toRad = x => x * Math.PI / 180;
       const R = 6371e3;
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
@@ -290,7 +397,7 @@
     function loadFromStorage() {
       const d = localStorage.getItem('journey_gps');
       if (!d) return null;
-      try { return JSON.parse(d); } catch (e) { return null; }
+      try { return JSON.parse(d); } catch { return null; }
     }
     function clearStorage() { localStorage.removeItem('journey_gps'); }
 
@@ -314,11 +421,22 @@
       chart = new Chart(ctx, {
         type: 'line',
         data: { labels: [], datasets: [{
-          label: 'Accuracy (m)', data: [], borderColor: '#2176ae', backgroundColor: 'rgba(33,118,174,0.1)', tension: 0.2, pointRadius: 0,
+          label: 'Accuracy (m)',
+          data: [],
+          borderColor: '#2176ae',
+          backgroundColor: 'rgba(33,118,174,0.12)',
+          tension: 0.25,
+          pointRadius: 0,
+          borderWidth: 2
         }]},
         options: {
-          scales: { x: {display:false}, y: {beginAtZero:true, title:{display:true,text:'Meters'}} },
-          plugins: { legend: {display:false} }
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { display: false },
+            y: { beginAtZero: true, title: { display: false } }
+          },
+          plugins: { legend: { display: false } }
         }
       });
     }
@@ -330,13 +448,17 @@
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
       }
-      chart.update();
+      chart.update('none');
     }
 
     // --- Map Setup ---
     function initMap(lat = 51.505, lng = -0.09, zoom = 13) {
-      map = L.map('map').setView([lat, lng], zoom);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
+      map = L.map('map', { zoomControl: true }).setView([lat, lng], zoom);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+      // Fix map sizing on orientation/resize
+      setTimeout(() => map.invalidateSize(), 200);
+      window.addEventListener('resize', () => setTimeout(() => map.invalidateSize(), 200));
+      window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 400));
     }
     function createClusterGroup() {
       if (markerCluster) { markerCluster.clearLayers(); map.removeLayer(markerCluster); }
@@ -351,7 +473,11 @@
     }
     function addPinToCluster(lat, lng, infoHTML, accuracy) {
       const marker = L.circleMarker([lat, lng], {
-        radius: 8, color: pinColor(accuracy), fillColor: pinColor(accuracy), fillOpacity: .85, weight: 2
+        radius: 8,
+        color: pinColor(accuracy),
+        fillColor: pinColor(accuracy),
+        fillOpacity: .85,
+        weight: 2
       });
       marker.bindPopup(infoHTML);
       markerCluster.addLayer(marker);
@@ -361,24 +487,26 @@
     }
     function drawPath(points, animate=false) {
       if (path) map.removeLayer(path);
-      path = L.polyline([], { color:'#2176ae', weight:5 }).addTo(map);
+      path = L.polyline([], { color: '#2176ae', weight: 5 }).addTo(map);
       if (animate && points.length > 1) {
-        let i=0;
-        function addNext() {
-          if (i < points.length) { path.addLatLng(points[i]); i++; setTimeout(addNext, 40); }
-          else { map.fitBounds(path.getBounds()); }
-        }
-        addNext();
-      } else { path.setLatLngs(points); if(points.length) map.fitBounds(path.getBounds()); }
+        let i = 0;
+        (function addNext() {
+          if (i < points.length) { path.addLatLng(points[i]); i++; setTimeout(addNext, 25); }
+          else { try { map.fitBounds(path.getBounds(), { padding: [20, 20] }); } catch {} }
+        })();
+      } else {
+        path.setLatLngs(points);
+        if (points.length) try { map.fitBounds(path.getBounds(), { padding: [20, 20] }); } catch {}
+      }
     }
     function updateLivePath() {
       const points = journey.map(j => [j.latitude, j.longitude]);
       if (path) map.removeLayer(path);
-      path = L.polyline(points, { color:'#2176ae', weight:5 }).addTo(map);
-      if (points.length) map.panTo(points[points.length-1]);
+      path = L.polyline(points, { color: '#2176ae', weight: 5 }).addTo(map);
+      if (points.length) map.panTo(points[points.length-1], { animate: true });
     }
 
-    // --- Stats ---
+    // --- Stats & status ---
     function updateStatsDisplay() {
       if (!journey.length) { document.getElementById('stats').textContent = ''; return; }
       let dist = 0;
@@ -391,58 +519,67 @@
         ? (journey[journey.length-1].speed*3.6).toFixed(1) + ' km/h' : '-';
       let avgAcc = (journey.reduce((a,j)=>a+j.accuracy,0)/journey.length).toFixed(1);
       document.getElementById('stats').innerHTML =
-        `Distance: <b>${dist} m</b> | Time: <b>${formatTime(elapsed)}</b> | Speed: <b>${speed}</b> | Avg Acc: <b>${avgAcc} m</b>`;
+        `📏 ${dist} m · ⏱️ ${formatTime(elapsed)} · 🚀 ${speed} · 🎯 ${avgAcc} m`;
     }
-    function updateStatusDisplay(text) { document.getElementById('status').textContent = text; }
+    function updateStatusDisplay(text, type='') {
+      const el = document.getElementById('status');
+      el.classList.remove('ok','warn','err');
+      if (type) el.classList.add(type);
+      el.textContent = text;
+    }
 
     // --- Download menu helpers ---
-    const downloadBtn = () => document.getElementById('downloadBtn');
-    const downloadMenu = () => document.getElementById('downloadMenu');
+    const downloadBtnEl = () => document.getElementById('downloadBtn');
+    const downloadMenuEl = () => document.getElementById('downloadMenu');
     function setDownloadEnabled(enabled) {
-      downloadBtn().disabled = !enabled;
+      const btn = downloadBtnEl();
+      btn.disabled = !enabled;
+      btn.setAttribute('aria-expanded', enabled ? 'false' : 'false');
       if (!enabled) closeDownloadMenu();
     }
     function toggleDownloadMenu() {
-      if (downloadBtn().disabled) return;
-      const menu = downloadMenu();
+      const btn = downloadBtnEl();
+      if (btn.disabled) return;
+      const menu = downloadMenuEl();
       const isOpen = menu.classList.contains('open');
       menu.classList.toggle('open', !isOpen);
       menu.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+      btn.setAttribute('aria-expanded', (!isOpen).toString());
     }
     function closeDownloadMenu() {
-      const menu = downloadMenu();
+      const btn = downloadBtnEl();
+      const menu = downloadMenuEl();
       menu.classList.remove('open');
       menu.setAttribute('aria-hidden', 'true');
+      btn.setAttribute('aria-expanded', 'false');
     }
     document.addEventListener('click', (e) => {
-      const dd = downloadBtn().parentElement;
+      const dd = downloadBtnEl().parentElement;
       if (!dd.contains(e.target)) closeDownloadMenu();
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeDownloadMenu();
     });
 
-    // --- Download Format Generators ---
-    function downloadJourneyJSON() {
-      const exportData = {
-        journey,
-        started,
-        paused,
-        startTime,
-        minAccuracy,
-        accuracyList
-      };
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    // --- Exporters ---
+    function downloadBlob(content, mime, filename) {
+      const blob = new Blob([content], { type: mime });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = "journey.json";
+      a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      updateStatusDisplay("Journey JSON (with metadata) downloaded!");
     }
+
+    function downloadJourneyJSON() {
+      const exportData = { journey, started, paused, startTime, minAccuracy, accuracyList };
+      downloadBlob(JSON.stringify(exportData, null, 2), "application/json", "journey.json");
+      updateStatusDisplay("JSON downloaded!", "ok");
+    }
+
     function journeyToKml(journey) {
-      if (!journey || journey.length === 0) return '';
-      const pathColor = 'ffae7621';
+      if (!journey?.length) return '';
+      const pathColor = 'ffae7621'; // aabbggrr
       const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
       let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
       kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>GPS Journey</name>\n`;
@@ -454,8 +591,8 @@
           `Lat: ${j.latitude.toFixed(6)}`,
           `Lng: ${j.longitude.toFixed(6)}`,
           `Accuracy: ${j.accuracy} m`,
-          `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1) + ' km/h' : 'N/A'}`,
-          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
+          `Speed: ${j.speed ?? '' ? (j.speed*3.6).toFixed(1)+' km/h' : 'N/A'}`,
+          `Heading: ${j.heading ?? '' ? j.heading.toFixed(1)+'°' : 'N/A'}`
         ].join(' | ');
         const when = isoTime(j.timestamp);
         kml += `      <Placemark>\n        <name>Point ${idx+1}</name>\n`;
@@ -471,23 +608,19 @@
       return kml;
     }
     function downloadJourneyKML() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
       const kml = journeyToKml(journey);
-      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.kml";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("KML downloaded!");
+      downloadBlob(kml, "application/vnd.google-earth.kml+xml", "journey.kml");
+      updateStatusDisplay("KML downloaded!", "ok");
     }
+
     function journeyToGpx(journey) {
-      if (!journey || journey.length === 0) return '';
-      let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GPS Journey Recorder"\n  xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>GPS Journey</name>\n    <trkseg>\n`;
+      if (!journey?.length) return '';
+      let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GPS Journey Recorder" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>GPS Journey</name>\n    <trkseg>\n`;
       journey.forEach(j => {
         const time = isoTime(j.timestamp);
         gpx += `      <trkpt lat="${j.latitude}" lon="${j.longitude}">\n`;
-        if (j.accuracy !== undefined) gpx += `        <hdop>${j.accuracy}</hdop>\n`;
+        if (j.accuracy !== undefined && j.accuracy !== null) gpx += `        <hdop>${j.accuracy}</hdop>\n`;
         if (j.speed !== undefined && j.speed !== null) gpx += `        <speed>${j.speed}</speed>\n`;
         if (j.heading !== undefined && j.heading !== null) gpx += `        <course>${j.heading}</course>\n`;
         if (time) gpx += `        <time>${time}</time>\n`;
@@ -497,59 +630,41 @@
       return gpx;
     }
     function downloadJourneyGPX() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
       const gpx = journeyToGpx(journey);
-      const blob = new Blob([gpx], { type: "application/gpx+xml" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.gpx";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("GPX downloaded!");
+      downloadBlob(gpx, "application/gpx+xml", "journey.gpx");
+      updateStatusDisplay("GPX downloaded!", "ok");
     }
+
     function journeyToCsv(journey, sep=',') {
-      if (!journey || journey.length === 0) return '';
+      if (!journey?.length) return '';
       const header = ['latitude','longitude','accuracy','timestamp','speed','heading'].join(sep);
-      const rows = journey.map(j=>
-        [j.latitude, j.longitude, j.accuracy, isoTime(j.timestamp), j.speed!==undefined?j.speed:'', j.heading!==undefined?j.heading:''].join(sep)
+      const rows = journey.map(j =>
+        [j.latitude, j.longitude, j.accuracy, isoTime(j.timestamp) || '', j.speed ?? '', j.heading ?? ''].join(sep)
       );
-      return header+'\n'+rows.join('\n');
+      return header + '\n' + rows.join('\n');
     }
     function downloadJourneyCSV() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
       const csv = journeyToCsv(journey, ',');
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.csv";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("CSV downloaded!");
+      downloadBlob(csv, "text/csv", "journey.csv");
+      updateStatusDisplay("CSV downloaded!", "ok");
     }
     function downloadJourneyTSV() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
       const tsv = journeyToCsv(journey, '\t');
-      const blob = new Blob([tsv], { type: "text/tab-separated-values" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.tsv";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("TSV downloaded!");
+      downloadBlob(tsv, "text/tab-separated-values", "journey.tsv");
+      updateStatusDisplay("TSV downloaded!", "ok");
     }
     function downloadJourneyTXT() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
-      const txt = journey.map(j=>(`${j.latitude},${j.longitude}`)).join('\n');
-      const blob = new Blob([txt], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.txt";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("Plain text coordinates downloaded!");
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
+      const txt = journey.map(j => `${j.latitude},${j.longitude}`).join('\n');
+      downloadBlob(txt, "text/plain", "journey.txt");
+      updateStatusDisplay("Plain text downloaded!", "ok");
     }
+
     function journeyToGeoJson(journey) {
-      if (!journey || journey.length === 0) return '';
+      if (!journey?.length) return '';
       const features = journey.map(j => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: [j.longitude, j.latitude] },
@@ -562,32 +677,21 @@
       }));
       const line = {
         type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: journey.map(j => [j.longitude, j.latitude])
-        },
+        geometry: { type: "LineString", coordinates: journey.map(j => [j.longitude, j.latitude]) },
         properties: {}
       };
-      return JSON.stringify({
-        type: "FeatureCollection",
-        features: [line, ...features]
-      }, null, 2);
+      return JSON.stringify({ type: "FeatureCollection", features: [line, ...features] }, null, 2);
     }
     function downloadJourneyGeoJSON() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
       const geojson = journeyToGeoJson(journey);
-      const blob = new Blob([geojson], { type: "application/geo+json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.geojson";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("GeoJSON downloaded!");
+      downloadBlob(geojson, "application/geo+json", "journey.geojson");
+      updateStatusDisplay("GeoJSON downloaded!", "ok");
     }
 
-    // --- Recording (unchanged) ---
+    // --- Recording ---
     function startJourney() {
-      if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!"); return; }
+      if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!", "err"); return; }
       started = true; paused = false; saveToStorage();
       clearPins(); createClusterGroup();
       document.getElementById('startBtn').disabled = true;
@@ -598,25 +702,28 @@
       document.getElementById('resetBtn').disabled = false;
       document.getElementById('accuracyInput').disabled = false;
       if (!startTime) startTime = Date.now();
-      updateStatsDisplay(); updateStatusDisplay("Recording...");
+      updateStatsDisplay(); updateStatusDisplay("Recording...", "ok");
       timerInterval = setInterval(updateStatsDisplay, 1000);
 
       watchId = navigator.geolocation.watchPosition(
         pos => {
           if (paused) return;
           const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-          const timestamp = pos.timestamp;
+          const timestamp = pos.timestamp; // from Position, not coords
           if (accuracy <= minAccuracy) {
+            // Smoothing: moving average with last 2 points (if available)
             let lat = latitude, lng = longitude;
             if (journey.length >= 2) {
-              lat = (journey[journey.length-1].latitude + journey[journey.length-2].latitude + latitude)/3;
-              lng = (journey[journey.length-1].longitude + journey[journey.length-2].longitude + longitude)/3;
+              lat = (journey[journey.length-1].latitude + journey[journey.length-2].latitude + latitude) / 3;
+              lng = (journey[journey.length-1].longitude + journey[journey.length-2].longitude + longitude) / 3;
             }
             journey.push({
-              latitude: lat, longitude: lng, accuracy,
+              latitude: lat,
+              longitude: lng,
+              accuracy,
               timestamp,
-              speed: speed!==undefined?speed:null,
-              heading: heading!==undefined?heading:null
+              speed: (speed !== undefined) ? speed : null,
+              heading: (heading !== undefined) ? heading : null
             });
             accuracyList.push(accuracy);
             saveToStorage();
@@ -631,18 +738,18 @@
             addPinToCluster(lat, lng, infoHTML, accuracy);
             updateLivePath();
             updateStatsDisplay();
-            updateStatusDisplay(`Pin: (${lat.toFixed(5)}, ${lng.toFixed(5)}) | Acc: ${accuracy}m`);
+            updateStatusDisplay(`Pin: (${lat.toFixed(5)}, ${lng.toFixed(5)}) | Acc: ${accuracy}m`, "ok");
             updateChart(accuracy);
           } else {
-            updateStatusDisplay(`Ignored inaccurate (${accuracy}m > ${minAccuracy}m)`);
+            updateStatusDisplay(`Ignored inaccurate (${accuracy}m > ${minAccuracy}m)`, "warn");
             updateChart(accuracy);
           }
         },
-        err => { updateStatusDisplay("Location error: "+err.message); },
+        err => { updateStatusDisplay("Location error: " + err.message, "err"); },
         {
-          enableHighAccuracy:true,
-          maximumAge:0,
-          timeout:1000
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 1500
         }
       );
     }
@@ -650,14 +757,14 @@
       paused = true;
       document.getElementById('pauseBtn').disabled = true;
       document.getElementById('resumeBtn').disabled = false;
-      updateStatusDisplay("Paused.");
+      updateStatusDisplay("Paused.", "warn");
       saveToStorage();
     }
     function resumeJourney() {
       paused = false;
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('pauseBtn').disabled = false;
-      updateStatusDisplay("Resumed recording.");
+      updateStatusDisplay("Resumed recording.", "ok");
       saveToStorage();
     }
     function stopJourney(save=true) {
@@ -670,7 +777,7 @@
       document.getElementById('stopBtn').disabled = true;
       setDownloadEnabled(journey.length !== 0);
       document.getElementById('accuracyInput').disabled = false;
-      updateStatusDisplay("Stopped. Path drawn.");
+      updateStatusDisplay("Stopped. Path drawn.", "ok");
       clearPins();
       const points = journey.map(j => [j.latitude, j.longitude]);
       drawPath(points, true);
@@ -692,7 +799,7 @@
       startTime = null; accuracyList = [];
       if (chart) { chart.data.labels=[]; chart.data.datasets[0].data=[]; chart.update(); }
       updateStatsDisplay();
-      updateStatusDisplay("Reset.");
+      updateStatusDisplay("Reset.", "warn");
       if (timerInterval) clearInterval(timerInterval);
       clearStorage();
     }
@@ -712,36 +819,39 @@
         addPinToCluster(j.latitude, j.longitude, infoHTML, j.accuracy);
       });
       updateLivePath();
-      if (journey.length) map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
+      if (journey.length) map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude], { animate: true });
     }
     function restorePath() {
       clearPins();
       if (journey.length) {
-        drawPath(journey.map(j=>[j.latitude,j.longitude]),false);
-        map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude]);
+        drawPath(journey.map(j => [j.latitude, j.longitude]), false);
+        map.panTo([journey[journey.length-1].latitude, journey[journey.length-1].longitude], { animate: true });
       }
     }
     function restoreChart() {
       if (!chart) return;
       chart.data.labels = Array(accuracyList.length).fill('');
       chart.data.datasets[0].data = accuracyList.slice();
-      chart.update();
+      chart.update('none');
     }
 
-    // --- Show/Hide Graph ---
+    // --- Graph toggle ---
     document.getElementById('toggleGraph').addEventListener('click', function() {
       graphVisible = !graphVisible;
       document.getElementById('chart-container').style.display = graphVisible ? 'block' : 'none';
+      this.setAttribute('aria-pressed', graphVisible ? 'true' : 'false');
       this.textContent = graphVisible ? '📊' : '🗺️';
       this.title = graphVisible ? "Hide accuracy graph" : "Show accuracy graph";
+      setTimeout(() => { if (map) map.invalidateSize(); }, 150);
     });
 
     // --- Event Listeners ---
-    document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage();});
-    document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney();});
-    document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney();});
-    document.getElementById('stopBtn').addEventListener('click', function(){ stopJourney(true); saveToStorage();});
-    downloadBtn().addEventListener('click', function(){ toggleDownloadMenu(); });
+    document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage(); });
+    document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney(); });
+    document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney(); });
+    document.getElementById('stopBtn').addEventListener('click', function(){ stopJourney(true); saveToStorage(); });
+
+    downloadBtnEl().addEventListener('click', function(){ toggleDownloadMenu(); });
     document.getElementById('downloadJson').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyJSON(); });
     document.getElementById('downloadKml').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyKML(); });
     document.getElementById('downloadGpx').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyGPX(); });
@@ -749,11 +859,12 @@
     document.getElementById('downloadTsv').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyTSV(); });
     document.getElementById('downloadTxt').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyTXT(); });
     document.getElementById('downloadGeoJson').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyGeoJSON(); });
+
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('accuracyInput').addEventListener('change', function(e){
       minAccuracy = Number(e.target.value);
       saveToStorage();
-      updateStatusDisplay('Min accuracy set to '+minAccuracy+' meters');
+      updateStatusDisplay('Min accuracy set to ' + minAccuracy + ' meters', "ok");
     });
 
     // --- On Load ---
@@ -763,8 +874,8 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            const {latitude,longitude} = pos.coords;
-            initMap(latitude,longitude,16);
+            const { latitude, longitude } = pos.coords;
+            initMap(latitude, longitude, 16);
             if (d && d.journey && d.journey.length) {
               journey = d.journey; startTime = d.startTime;
               started = !!d.started; paused = !!d.paused;
@@ -777,13 +888,13 @@
                 restorePins();
                 document.getElementById('startBtn').disabled = true;
                 document.getElementById('pauseBtn').disabled = !paused;
-                document.getElementById('resumeBtn').disabled = paused?false:true;
+                document.getElementById('resumeBtn').disabled = paused ? false : true;
                 document.getElementById('stopBtn').disabled = false;
                 document.getElementById('resetBtn').disabled = false;
                 setDownloadEnabled(false);
                 document.getElementById('accuracyInput').disabled = false;
-                updateStatusDisplay(paused?"Paused":"Resumed recording.");
-                timerInterval = setInterval(updateStatsDisplay,1000);
+                updateStatusDisplay(paused ? "Paused" : "Resumed recording.", paused ? "warn" : "ok");
+                timerInterval = setInterval(updateStatsDisplay, 1000);
                 if (!paused) startJourney();
               } else {
                 restorePath();
@@ -794,13 +905,13 @@
                 document.getElementById('resetBtn').disabled = false;
                 setDownloadEnabled(journey.length !== 0);
                 document.getElementById('accuracyInput').disabled = false;
-                updateStatusDisplay("Journey loaded. Path restored.");
+                updateStatusDisplay("Journey loaded. Path restored.", "ok");
               }
             } else {
               document.getElementById('resetBtn').disabled = true;
               setDownloadEnabled(false);
               document.getElementById('accuracyInput').disabled = false;
-              updateStatusDisplay("Ready.");
+              updateStatusDisplay("Ready.", "ok");
             }
           },
           () => { initMap(); }
