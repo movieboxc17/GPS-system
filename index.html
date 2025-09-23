@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <title>GPS Journey Recorder - Mobile Enhanced</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2176ae">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css">
+  <style id="darkModeStyle"></style>
   <style>
     :root {
       --main-bg: #f4f7fb;
@@ -241,6 +243,16 @@
     .card-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .empty { color: var(--muted); text-align: center; padding: 16px; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 6px solid #eee;
+      border-top: 6px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
   </style>
 </head>
 <body>
@@ -248,6 +260,8 @@
   <div id="controls">
     <div class="controls-wrap">
       <div class="control-row" aria-label="Recording controls">
+        <button id="fullscreenMapBtn" class="btn btn-outline btn-icon" title="Fullscreen map" aria-label="Fullscreen map">🖥️</button>
+        <button id="darkModeBtn" class="btn btn-outline btn-icon" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
         <div class="btn-group" role="group" aria-label="Record">
           <button id="startBtn" class="btn btn-ghost" title="Start recording">▶️ Start</button>
           <button id="pauseBtn" class="btn btn-ghost" disabled title="Pause recording">⏸️ Pause</button>
@@ -299,11 +313,24 @@
     </div>
   </div>
 
+  <!-- Loading Spinner -->
+  <div id="loadingSpinner" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.18);backdrop-filter:blur(2px);align-items:center;justify-content:center;">
+    <div style="background:var(--surface);padding:24px 32px;border-radius:16px;box-shadow:var(--shadow-md);display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="spinner"></div>
+      <div style="color:var(--text);font-size:16px;">Locating...</div>
+    </div>
+  </div>
+
   <!-- Chart -->
   <div id="chart-container"><canvas id="chart"></canvas></div>
 
   <!-- Map -->
   <div id="map"></div>
+  <div id="summaryCard" style="display:none;position:fixed;bottom:24px;right:24px;z-index:1200;background:var(--surface);box-shadow:var(--shadow-md);border-radius:16px;padding:18px 24px;min-width:220px;max-width:90vw;">
+    <div style="font-weight:600;font-size:18px;margin-bottom:8px;">Journey Summary</div>
+    <div id="summaryStats" style="font-size:15px;"></div>
+    <button id="closeSummaryBtn" class="btn btn-outline" style="margin-top:12px;">Close</button>
+  </div>
 
   <!-- Journeys Modal -->
   <div id="journeysModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="journeysTitle">
@@ -317,7 +344,9 @@
         <div class="save-row">
           <input id="journeyNameInput" type="text" placeholder="Journey name (e.g., Morning Ride)">
           <button id="saveJourneyBtn" class="btn btn-primary">💾 Save current</button>
+          <button id="exportAllJourneysBtn" class="btn btn-outline" title="Export all journeys">⬇️ Export All</button>
         </div>
+        <div id="storageUsage" style="margin:8px 0 0 0;font-size:13px;color:var(--muted);"></div>
         <div class="list" id="journeysList"></div>
       </div>
     </div>
@@ -379,7 +408,12 @@
       } catch { return []; }
     }
     function saveSavedJourneys(arr) {
-      localStorage.setItem(SAVED_KEY, JSON.stringify(arr));
+      try {
+        localStorage.setItem(SAVED_KEY, JSON.stringify(arr));
+      } catch (e) {
+        updateStatusDisplay("Storage full! Could not save journey.", "err");
+        return false;
+      }
     }
     function uid() { return Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5); }
 
@@ -750,8 +784,11 @@ ${coordsLine}
       drawPath(points, true);
       updateStatsDisplay();
       if (timerInterval) clearInterval(timerInterval);
+      showSummaryCard();
+      try { if (window.navigator.vibrate) window.navigator.vibrate([100,40,100]); } catch {}
     }
     function resetAll() {
+      if (!window.confirm("Reset journey? This will clear all current data.")) return;
       if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
       started = false; paused = false; journey = [];
       clearPins();
@@ -769,6 +806,8 @@ ${coordsLine}
       updateStatusDisplay("Reset.", "warn");
       if (timerInterval) clearInterval(timerInterval);
       clearStorage();
+      updateStorageUsageDisplay();
+      try { if (window.navigator.vibrate) window.navigator.vibrate([30,30,30]); } catch {}
     }
 
     // --- Restore current ---
@@ -878,8 +917,11 @@ ${coordsLine}
       };
       const arr = loadSavedJourneys();
       arr.unshift(item);
-      saveSavedJourneys(arr);
+      const ok = saveSavedJourneys(arr);
+      updateStorageUsageDisplay();
+      if (ok === false) return false;
       updateStatusDisplay(`Saved as “${item.name}”`, "ok");
+      try { if (window.navigator.vibrate) window.navigator.vibrate(80); } catch {}
       return true;
     }
     function loadJourneyById(id) {
@@ -930,12 +972,13 @@ ${coordsLine}
       const arr = loadSavedJourneys();
       const idx = arr.findIndex(x => x.id === id);
       if (idx === -1) { updateStatusDisplay("Journey not found.", "err"); return; }
-      const ok = confirm(`Delete “${arr[idx].name}”? This cannot be undone.`);
-      if (!ok) return;
+      if (!window.confirm(`Delete “${arr[idx].name}”? This cannot be undone.`)) return;
       arr.splice(idx, 1);
       saveSavedJourneys(arr);
       renderJourneysList();
+      updateStorageUsageDisplay();
       updateStatusDisplay("Journey deleted.", "ok");
+      try { if (window.navigator.vibrate) window.navigator.vibrate([40,40]); } catch {}
     }
 
     // Journeys modal events
@@ -949,14 +992,19 @@ ${coordsLine}
       const name = (journeyNameInput.value || '').trim() || suggestJourneyName();
       const ok = saveCurrentJourneyByName(name);
       if (ok) { renderJourneysList(); }
+      updateStorageUsageDisplay();
     });
-    journeysListEl.addEventListener('click', (e) => {
-      const card = e.target.closest('.card');
-      if (!card) return;
-      const id = card.getAttribute('data-id');
-      if (e.target.classList.contains('js-load'))   return loadJourneyById(id);
-      if (e.target.classList.contains('js-rename')) return renameJourneyById(id);
-      if (e.target.classList.contains('js-delete')) return deleteJourneyById(id);
+    document.getElementById('exportAllJourneysBtn').addEventListener('click', () => {
+      const arr = loadSavedJourneys();
+      if (!arr.length) return updateStatusDisplay("No journeys to export.", "warn");
+      const blob = new Blob([JSON.stringify(arr, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "all_journeys.json";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("All journeys exported!", "ok");
+      try { if (window.navigator.vibrate) window.navigator.vibrate([60,60,60]); } catch {}
     });
 
     // --- Keep Awake toggle (Screen Wake Lock API) ---
@@ -1079,6 +1127,76 @@ ${coordsLine}
         );
       } else { initMap(); }
     };
+
+    // Fullscreen map toggle
+    const fullscreenMapBtn = document.getElementById('fullscreenMapBtn');
+    let mapFullscreen = false;
+    fullscreenMapBtn.addEventListener('click', function() {
+      const mapEl = document.getElementById('map');
+      mapFullscreen = !mapFullscreen;
+      if (mapFullscreen) {
+        mapEl.style.position = 'fixed';
+        mapEl.style.inset = '0';
+        mapEl.style.zIndex = '2000';
+        mapEl.style.height = '100vh';
+        mapEl.style.width = '100vw';
+        document.body.style.overflow = 'hidden';
+        fullscreenMapBtn.textContent = '❌';
+        fullscreenMapBtn.title = 'Exit fullscreen';
+      } else {
+        mapEl.style.position = '';
+        mapEl.style.inset = '';
+        mapEl.style.zIndex = '';
+        mapEl.style.height = '';
+        mapEl.style.width = '';
+        document.body.style.overflow = '';
+        fullscreenMapBtn.textContent = '🖥️';
+        fullscreenMapBtn.title = 'Fullscreen map';
+      }
+      setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+      mapEl.focus();
+    });
+
+    // Manual dark mode toggle
+    const darkModeBtn = document.getElementById('darkModeBtn');
+    let darkModeManual = false;
+    darkModeBtn.addEventListener('click', function() {
+      darkModeManual = !darkModeManual;
+      if (darkModeManual) {
+        document.getElementById('darkModeStyle').textContent = `html { filter: invert(1) hue-rotate(180deg); background: #0b1220 !important; } img, video { filter: invert(1) hue-rotate(180deg); }`;
+        darkModeBtn.textContent = '☀️';
+        darkModeBtn.title = 'Light mode';
+      } else {
+        document.getElementById('darkModeStyle').textContent = '';
+        darkModeBtn.textContent = '🌙';
+        darkModeBtn.title = 'Dark mode';
+      }
+      darkModeBtn.focus();
+    });
+
+    // Summary card after stop
+    function showSummaryCard() {
+      const card = document.getElementById('summaryCard');
+      const stats = computeStats(journey, startTime);
+      document.getElementById('summaryStats').innerHTML =
+        `<b>Distance:</b> ${stats.distance} m<br>`+
+        `<b>Duration:</b> ${formatTime(stats.duration)}<br>`+
+        `<b>Points:</b> ${stats.points}<br>`+
+        `<b>Avg Accuracy:</b> ${(journey.reduce((a,j)=>a+j.accuracy,0)/journey.length).toFixed(1)} m`;
+      card.style.display = 'block';
+      document.getElementById('closeSummaryBtn').focus();
+    }
+    document.getElementById('closeSummaryBtn').addEventListener('click', function(){ document.getElementById('summaryCard').style.display = 'none'; });
+
+    // Accessibility: keyboard navigation for modal
+    journeysModal.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        const focusEls = journeysModal.querySelectorAll('input,button');
+        const first = focusEls[0], last = focusEls[focusEls.length-1];
+        if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+        else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+      }
+    });
   </script>
 </body>
 </html>
