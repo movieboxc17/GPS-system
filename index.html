@@ -43,7 +43,6 @@
         --shadow-md: 0 6px 24px rgba(0,0,0,.45);
       }
     }
-    /* App layout: fill the screen neatly on mobile & tablets */
     html, body {
       height: 100svh;
       min-height: 100vh;
@@ -60,7 +59,6 @@
       scroll-behavior: smooth;
     }
 
-    /* Controls/App bar */
     #controls {
       position: sticky;
       top: 0;
@@ -77,9 +75,7 @@
       align-items: center;
     }
     @media (max-width: 840px) {
-      .controls-wrap {
-        grid-template-columns: 1fr;
-      }
+      .controls-wrap { grid-template-columns: 1fr; }
     }
     .control-row {
       display: flex;
@@ -89,7 +85,6 @@
       min-height: 44px;
     }
 
-    /* Buttons */
     .btn {
       appearance: none;
       border: none;
@@ -122,9 +117,7 @@
       background: transparent; color: var(--text);
       border: 1px solid rgba(2, 6, 23, .08);
     }
-    .btn-danger {
-      background: var(--danger); color: #fff;
-    }
+    .btn-danger { background: var(--danger); color: #fff; }
     .btn-chip {
       background: #eaf4fb;
       color: var(--accent-dark);
@@ -141,7 +134,6 @@
       justify-content: center;
     }
 
-    /* Segmented primary controls on large screens */
     .btn-group {
       display: inline-flex;
       border-radius: var(--radius-xs);
@@ -161,7 +153,6 @@
       .btn-group .btn { min-width: 56px; }
     }
 
-    /* Inputs */
     .field {
       display: inline-flex;
       align-items: center;
@@ -187,7 +178,6 @@
       outline: none;
     }
 
-    /* Download dropdown / bottom sheet */
     .dropdown { position: relative; display: inline-block; }
     .menu {
       position: absolute;
@@ -231,7 +221,6 @@
     @media (prefers-color-scheme: dark) {
       .menu .item:hover { background: rgba(255,255,255,.06); }
     }
-    /* Bottom sheet on narrow screens */
     @media (max-width: 540px) {
       .menu {
         position: fixed;
@@ -244,7 +233,6 @@
       }
     }
 
-    /* Status & stats chips */
     .chips {
       display: flex;
       flex-wrap: wrap;
@@ -263,7 +251,6 @@
     #status.warn { color: var(--warning); border-color: rgba(245,158,11,.25); }
     #status.err { color: var(--danger); border-color: rgba(229,57,53,.25); }
 
-    /* Chart & map containers fill the remaining space nicely */
     #chart-container {
       background: var(--surface);
       border-radius: var(--radius);
@@ -274,7 +261,6 @@
     }
     #chart { width: 100%; height: 120px; display: block; }
 
-    /* Map flexes to fill leftover height for perfect fit */
     #map {
       margin: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
       border-radius: var(--radius);
@@ -285,7 +271,6 @@
       overflow: clip;
     }
 
-    /* Mobile tweaks */
     @media (max-width: 740px) {
       .field input[type=number] { width: 64px; }
       #chart { height: 100px; }
@@ -299,10 +284,8 @@
   </style>
 </head>
 <body>
-  <!-- App/controls bar -->
   <div id="controls">
     <div class="controls-wrap">
-      <!-- Primary controls -->
       <div class="control-row" aria-label="Recording controls">
         <div class="btn-group" role="group" aria-label="Record">
           <button id="startBtn" class="btn btn-ghost" title="Start recording">▶️ Start</button>
@@ -319,7 +302,6 @@
 
         <button id="toggleGraph" class="btn btn-outline btn-icon" title="Show/hide accuracy graph" aria-pressed="true">📊</button>
 
-        <!-- Download dropdown -->
         <div class="dropdown">
           <button id="downloadBtn" class="btn btn-primary" disabled title="Download" aria-haspopup="menu" aria-expanded="false">⬇️ Download</button>
           <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
@@ -328,6 +310,7 @@
             <button id="downloadGeoJson" class="item" role="menuitem">🗺️ GeoJSON</button>
             <div class="group-title">GIS</div>
             <button id="downloadKml" class="item" role="menuitem">🌍 KML (Google Earth)</button>
+            <button id="downloadKmlPath" class="item" role="menuitem">🧵 KML (Path only, no pins)</button>
             <button id="downloadGpx" class="item" role="menuitem">📍 GPX (GPS Exchange)</button>
             <div class="group-title">Tables & Text</div>
             <button id="downloadCsv" class="item" role="menuitem">📊 CSV</button>
@@ -339,7 +322,6 @@
         <button id="resetBtn" class="btn btn-danger" disabled title="Reset journey">♻️ Reset</button>
       </div>
 
-      <!-- Status area -->
       <div class="control-row" aria-live="polite">
         <div class="chips">
           <div id="stats" class="btn-chip"></div>
@@ -349,20 +331,16 @@
     </div>
   </div>
 
-  <!-- Chart -->
   <div id="chart-container">
     <canvas id="chart"></canvas>
   </div>
 
-  <!-- Map -->
   <div id="map"></div>
 
-  <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // --- Utility ---
     function haversine(lat1, lon1, lat2, lon2) {
       const toRad = x => x * Math.PI / 180;
       const R = 6371e3;
@@ -401,7 +379,6 @@
     }
     function clearStorage() { localStorage.removeItem('journey_gps'); }
 
-    // --- Variables ---
     let map, path;
     let watchId = null;
     let journey = [];
@@ -415,7 +392,6 @@
     let chart = null;
     let graphVisible = true;
 
-    // --- Chart.js Accuracy Graph ---
     function setupChart() {
       const ctx = document.getElementById('chart').getContext('2d');
       chart = new Chart(ctx, {
@@ -432,10 +408,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            x: { display: false },
-            y: { beginAtZero: true, title: { display: false } }
-          },
+          scales: { x: { display: false }, y: { beginAtZero: true } },
           plugins: { legend: { display: false } }
         }
       });
@@ -451,11 +424,9 @@
       chart.update('none');
     }
 
-    // --- Map Setup ---
     function initMap(lat = 51.505, lng = -0.09, zoom = 13) {
       map = L.map('map', { zoomControl: true }).setView([lat, lng], zoom);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-      // Fix map sizing on orientation/resize
       setTimeout(() => map.invalidateSize(), 200);
       window.addEventListener('resize', () => setTimeout(() => map.invalidateSize(), 200));
       window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 400));
@@ -506,7 +477,6 @@
       if (points.length) map.panTo(points[points.length-1], { animate: true });
     }
 
-    // --- Stats & status ---
     function updateStatsDisplay() {
       if (!journey.length) { document.getElementById('stats').textContent = ''; return; }
       let dist = 0;
@@ -528,7 +498,6 @@
       el.textContent = text;
     }
 
-    // --- Download menu helpers ---
     const downloadBtnEl = () => document.getElementById('downloadBtn');
     const downloadMenuEl = () => document.getElementById('downloadMenu');
     function setDownloadEnabled(enabled) {
@@ -561,7 +530,6 @@
       if (e.key === 'Escape') closeDownloadMenu();
     });
 
-    // --- Exporters ---
     function downloadBlob(content, mime, filename) {
       const blob = new Blob([content], { type: mime });
       const url = URL.createObjectURL(blob);
@@ -579,7 +547,7 @@
 
     function journeyToKml(journey) {
       if (!journey?.length) return '';
-      const pathColor = 'ffae7621'; // aabbggrr
+      const pathColor = 'ffae7621';
       const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
       let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
       kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>GPS Journey</name>\n`;
@@ -591,8 +559,8 @@
           `Lat: ${j.latitude.toFixed(6)}`,
           `Lng: ${j.longitude.toFixed(6)}`,
           `Accuracy: ${j.accuracy} m`,
-          `Speed: ${j.speed ?? '' ? (j.speed*3.6).toFixed(1)+' km/h' : 'N/A'}`,
-          `Heading: ${j.heading ?? '' ? j.heading.toFixed(1)+'°' : 'N/A'}`
+          `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1)+' km/h' : 'N/A'}`,
+          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
         ].join(' | ');
         const when = isoTime(j.timestamp);
         kml += `      <Placemark>\n        <name>Point ${idx+1}</name>\n`;
@@ -612,6 +580,37 @@
       const kml = journeyToKml(journey);
       downloadBlob(kml, "application/vnd.google-earth.kml+xml", "journey.kml");
       updateStatusDisplay("KML downloaded!", "ok");
+    }
+
+    // NEW: KML path-only (no pins)
+    function journeyToKmlPathOnly(journey) {
+      if (!journey?.length) return '';
+      const pathColor = 'ffae7621';
+      const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>GPS Journey (Path Only)</name>
+    <Style id="pathStyle"><LineStyle><color>${pathColor}</color><width>4</width></LineStyle></Style>
+    <Placemark>
+      <name>Path</name>
+      <styleUrl>#pathStyle</styleUrl>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+${coordsLine}
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>
+`;
+    }
+    function downloadJourneyKMLPathOnly() {
+      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
+      const kml = journeyToKmlPathOnly(journey);
+      downloadBlob(kml, "application/vnd.google-earth.kml+xml", "journey_path_only.kml");
+      updateStatusDisplay("KML (path only) downloaded!", "ok");
     }
 
     function journeyToGpx(journey) {
@@ -689,7 +688,6 @@
       updateStatusDisplay("GeoJSON downloaded!", "ok");
     }
 
-    // --- Recording ---
     function startJourney() {
       if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!", "err"); return; }
       started = true; paused = false; saveToStorage();
@@ -709,9 +707,8 @@
         pos => {
           if (paused) return;
           const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-          const timestamp = pos.timestamp; // from Position, not coords
+          const timestamp = pos.timestamp;
           if (accuracy <= minAccuracy) {
-            // Smoothing: moving average with last 2 points (if available)
             let lat = latitude, lng = longitude;
             if (journey.length >= 2) {
               lat = (journey[journey.length-1].latitude + journey[journey.length-2].latitude + latitude) / 3;
@@ -804,7 +801,6 @@
       clearStorage();
     }
 
-    // --- Restore ---
     function restorePins() {
       clearPins(); createClusterGroup();
       journey.forEach(j => {
@@ -835,7 +831,6 @@
       chart.update('none');
     }
 
-    // --- Graph toggle ---
     document.getElementById('toggleGraph').addEventListener('click', function() {
       graphVisible = !graphVisible;
       document.getElementById('chart-container').style.display = graphVisible ? 'block' : 'none';
@@ -845,7 +840,6 @@
       setTimeout(() => { if (map) map.invalidateSize(); }, 150);
     });
 
-    // --- Event Listeners ---
     document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage(); });
     document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney(); });
     document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney(); });
@@ -854,6 +848,7 @@
     downloadBtnEl().addEventListener('click', function(){ toggleDownloadMenu(); });
     document.getElementById('downloadJson').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyJSON(); });
     document.getElementById('downloadKml').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyKML(); });
+    document.getElementById('downloadKmlPath').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyKMLPathOnly(); });
     document.getElementById('downloadGpx').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyGPX(); });
     document.getElementById('downloadCsv').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyCSV(); });
     document.getElementById('downloadTsv').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyTSV(); });
@@ -867,7 +862,6 @@
       updateStatusDisplay('Min accuracy set to ' + minAccuracy + ' meters', "ok");
     });
 
-    // --- On Load ---
     window.onload = function() {
       setupChart();
       let d = loadFromStorage();
