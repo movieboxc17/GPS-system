@@ -59,6 +59,7 @@
       scroll-behavior: smooth;
     }
 
+    /* Controls bar */
     #controls {
       position: sticky;
       top: 0;
@@ -74,9 +75,7 @@
       gap: var(--gap);
       align-items: center;
     }
-    @media (max-width: 840px) {
-      .controls-wrap { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 840px) { .controls-wrap { grid-template-columns: 1fr; } }
     .control-row {
       display: flex;
       align-items: center;
@@ -85,6 +84,7 @@
       min-height: 44px;
     }
 
+    /* Buttons */
     .btn {
       appearance: none;
       border: none;
@@ -109,31 +109,14 @@
     .btn:disabled { opacity: .5; cursor: not-allowed; }
     .btn-primary { background: var(--accent); color: var(--accent-contrast); }
     .btn-primary:active { background: var(--accent-dark); }
-    .btn-outline {
-      background: transparent; color: var(--accent);
-      border: 2px solid var(--accent);
-    }
-    .btn-ghost {
-      background: transparent; color: var(--text);
-      border: 1px solid rgba(2, 6, 23, .08);
-    }
+    .btn-outline { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid rgba(2, 6, 23, .08); }
     .btn-danger { background: var(--danger); color: #fff; }
-    .btn-chip {
-      background: #eaf4fb;
-      color: var(--accent-dark);
-      border-radius: 999px;
-      padding: 8px 12px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .btn-chip { background: #0b2030; }
-    }
-    .btn-icon {
-      padding: 10px;
-      width: 44px;
-      min-width: 44px;
-      justify-content: center;
-    }
+    .btn-chip { background: #eaf4fb; color: var(--accent-dark); border-radius: 999px; padding: 8px 12px; }
+    @media (prefers-color-scheme: dark) { .btn-chip { background: #0b2030; } }
+    .btn-icon { padding: 10px; width: 44px; min-width: 44px; justify-content: center; }
 
+    /* Button group */
     .btn-group {
       display: inline-flex;
       border-radius: var(--radius-xs);
@@ -141,18 +124,14 @@
       border: 1px solid rgba(2,6,23,.08);
       background: var(--surface);
     }
-    .btn-group .btn {
-      border-radius: 0;
-      min-width: 64px;
-      border-right: 1px solid rgba(2,6,23,.08);
-      box-shadow: none;
-    }
+    .btn-group .btn { border-radius: 0; min-width: 64px; border-right: 1px solid rgba(2,6,23,.08); box-shadow: none; }
     .btn-group .btn:last-child { border-right: 0; }
     @media (max-width: 620px) {
       .btn-group { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .btn-group .btn { min-width: 56px; }
     }
 
+    /* Field */
     .field {
       display: inline-flex;
       align-items: center;
@@ -163,127 +142,110 @@
       border-radius: var(--radius-xs);
       border: 1px solid rgba(2,6,23,.08);
     }
-    @media (prefers-color-scheme: dark) {
-      .field { background: #0b2030; }
-    }
+    @media (prefers-color-scheme: dark) { .field { background: #0b2030; } }
     .field label { font-size: 14px; color: var(--muted); }
     .field input[type=number] {
-      width: 70px;
-      font-size: 15px;
-      padding: 6px 8px;
-      border: 1px solid rgba(2,6,23,.08);
-      border-radius: 8px;
-      background: var(--surface);
-      color: var(--text);
-      outline: none;
+      width: 70px; font-size: 15px; padding: 6px 8px;
+      border: 1px solid rgba(2,6,23,.08); border-radius: 8px;
+      background: var(--surface); color: var(--text); outline: none;
     }
 
+    /* Dropdown */
     .dropdown { position: relative; display: inline-block; }
     .menu {
-      position: absolute;
-      top: calc(100% + 8px);
-      right: 0;
-      background: var(--surface);
-      border: 1px solid rgba(2,6,23,.08);
-      box-shadow: var(--shadow-md);
-      border-radius: var(--radius);
-      padding: 6px;
-      display: none;
-      min-width: 240px;
-      z-index: 1100;
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--surface); border: 1px solid rgba(2,6,23,.08);
+      box-shadow: var(--shadow-md); border-radius: var(--radius);
+      padding: 6px; display: none; min-width: 240px; z-index: 1100;
     }
     .menu.open { display: block; }
     .menu .group-title {
-      font-size: 12px;
-      letter-spacing: .04em;
-      color: var(--muted);
-      padding: 6px 10px 4px 10px;
-      text-transform: uppercase;
+      font-size: 12px; letter-spacing: .04em; color: var(--muted);
+      padding: 6px 10px 4px 10px; text-transform: uppercase;
     }
     .menu .item {
-      width: 100%;
-      background: transparent;
-      color: var(--text);
-      text-align: left;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: none;
-      min-height: 40px;
-      min-width: auto;
-      box-shadow: none;
-      font-size: 15px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      width: 100%; background: transparent; color: var(--text);
+      text-align: left; padding: 10px 12px; border-radius: 8px; border: none;
+      min-height: 40px; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 10px;
     }
     .menu .item:hover { background: rgba(2,6,23,.05); }
-    @media (prefers-color-scheme: dark) {
-      .menu .item:hover { background: rgba(255,255,255,.06); }
-    }
+    @media (prefers-color-scheme: dark) { .menu .item:hover { background: rgba(255,255,255,.06); } }
     @media (max-width: 540px) {
-      .menu {
-        position: fixed;
-        left: 0; right: 0; bottom: 0;
-        top: auto;
-        border-radius: 16px 16px 0 0;
-        padding-bottom: calc(6px + env(safe-area-inset-bottom));
-        margin: 0 auto;
-        max-width: 640px;
-      }
+      .menu { position: fixed; left: 0; right: 0; bottom: 0; top: auto; border-radius: 16px 16px 0 0; padding-bottom: calc(6px + env(safe-area-inset-bottom)); margin: 0 auto; max-width: 640px; }
     }
 
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
+    /* Chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     #stats, #status {
-      font-size: 14px;
-      padding: 8px 12px;
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid rgba(2,6,23,.08);
-      border-radius: 999px;
+      font-size: 14px; padding: 8px 12px; background: var(--surface); color: var(--text);
+      border: 1px solid rgba(2,6,23,.08); border-radius: 999px;
     }
     #status.ok { color: var(--ok); border-color: rgba(46,125,50,.25); }
     #status.warn { color: var(--warning); border-color: rgba(245,158,11,.25); }
     #status.err { color: var(--danger); border-color: rgba(229,57,53,.25); }
 
+    /* Chart and Map */
     #chart-container {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 8px 8px 0 8px;
-      margin: 10px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
-      box-shadow: var(--shadow-sm);
+      background: var(--surface); border-radius: var(--radius); padding: 8px 8px 0 8px;
+      margin: 10px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left)); box-shadow: var(--shadow-sm);
       flex: 0 0 auto;
     }
     #chart { width: 100%; height: 120px; display: block; }
-
     #map {
       margin: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-md);
-      background: #d0d7e2;
-      flex: 1 1 auto;
-      min-height: 260px;
-      overflow: clip;
+      border-radius: var(--radius); box-shadow: var(--shadow-md); background: #d0d7e2;
+      flex: 1 1 auto; min-height: 260px; overflow: clip;
     }
+    @media (max-width: 740px) { .field input[type=number] { width: 64px; } #chart { height: 100px; } }
+    @media (max-width: 480px) { .btn { min-height: 40px; font-size: 14px; padding: 9px 12px; } .btn-icon { width: 40px; min-width: 40px; padding: 8px; } #chart { height: 84px; } #map { min-height: 220px; } }
 
-    @media (max-width: 740px) {
-      .field input[type=number] { width: 64px; }
-      #chart { height: 100px; }
+    /* Journeys Modal */
+    .modal { position: fixed; inset: 0; display: none; z-index: 1300; }
+    .modal.open { display: block; }
+    .modal-backdrop {
+      position: absolute; inset: 0; background: rgba(2,6,23,.45);
+      backdrop-filter: blur(2px);
     }
-    @media (max-width: 480px) {
-      .btn { min-height: 40px; font-size: 14px; padding: 9px 12px; }
-      .btn-icon { width: 40px; min-width: 40px; padding: 8px; }
-      #chart { height: 84px; }
-      #map { min-height: 220px; }
+    .modal-dialog {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      bottom: 0; right: 0; background: var(--surface); width: min(720px, 96vw);
+      border-radius: 16px 16px 0 0; box-shadow: var(--shadow-md);
+      padding-bottom: env(safe-area-inset-bottom);
+      max-height: 88vh; display: flex; flex-direction: column;
     }
+    @media (min-width: 900px) {
+      .modal-dialog { top: 10vh; bottom: auto; border-radius: 12px; max-height: 80vh; }
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 12px 14px; border-bottom: 1px solid rgba(2,6,23,.08);
+    }
+    .modal-title { font-size: 18px; font-weight: 600; }
+    .modal-body { padding: 10px 14px 14px 14px; overflow: auto; }
+    .save-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      background: #eef6fb; border: 1px solid rgba(2,6,23,.08); border-radius: 12px; padding: 8px;
+    }
+    @media (prefers-color-scheme: dark) { .save-row { background: #0b2030; } }
+    .save-row input[type=text] {
+      font-size: 15px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(2,6,23,.12);
+      background: var(--surface); color: var(--text); outline: none; width: 100%;
+    }
+    .list {
+      margin-top: 12px; display: grid; gap: 10px;
+    }
+    .card {
+      border: 1px solid rgba(2,6,23,.08); border-radius: 12px; background: var(--surface);
+      padding: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    }
+    .card-title { font-weight: 600; }
+    .card-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .empty { color: var(--muted); text-align: center; padding: 16px; }
   </style>
 </head>
 <body>
+  <!-- Controls -->
   <div id="controls">
     <div class="controls-wrap">
       <div class="control-row" aria-label="Recording controls">
@@ -302,6 +264,10 @@
 
         <button id="toggleGraph" class="btn btn-outline btn-icon" title="Show/hide accuracy graph" aria-pressed="true">📊</button>
 
+        <!-- Journeys manager -->
+        <button id="journeysBtn" class="btn btn-ghost" title="Open journeys">🗂️ Journeys</button>
+
+        <!-- Download dropdown -->
         <div class="dropdown">
           <button id="downloadBtn" class="btn btn-primary" disabled title="Download" aria-haspopup="menu" aria-expanded="false">⬇️ Download</button>
           <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
@@ -331,12 +297,31 @@
     </div>
   </div>
 
-  <div id="chart-container">
-    <canvas id="chart"></canvas>
-  </div>
+  <!-- Chart -->
+  <div id="chart-container"><canvas id="chart"></canvas></div>
 
+  <!-- Map -->
   <div id="map"></div>
 
+  <!-- Journeys Modal -->
+  <div id="journeysModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="journeysTitle">
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title" id="journeysTitle">Journeys</div>
+        <button id="closeJourneys" class="btn btn-icon btn-ghost" aria-label="Close">✖️</button>
+      </div>
+      <div class="modal-body">
+        <div class="save-row">
+          <input id="journeyNameInput" type="text" placeholder="Journey name (e.g., Morning Ride)">
+          <button id="saveJourneyBtn" class="btn btn-primary">💾 Save current</button>
+        </div>
+        <div class="list" id="journeysList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -361,13 +346,15 @@
     function formatDate(ts) {
       if (ts === undefined || ts === null || Number.isNaN(ts)) return '';
       const d = new Date(ts);
-      return isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
+      return isNaN(d.getTime()) ? '' : d.toLocaleString();
     }
     function isoTime(ts) {
       if (ts === undefined || ts === null || Number.isNaN(ts)) return '';
       const d = new Date(ts);
       return isNaN(d.getTime()) ? '' : d.toISOString();
     }
+
+    // --- Local storage primitives ---
     function saveToStorage() {
       localStorage.setItem('journey_gps', JSON.stringify({
         journey, started, paused, startTime, minAccuracy, accuracyList
@@ -379,6 +366,20 @@
       try { return JSON.parse(d); } catch { return null; }
     }
     function clearStorage() { localStorage.removeItem('journey_gps'); }
+
+    const SAVED_KEY = 'journey_gps_saved_v1';
+    function loadSavedJourneys() {
+      try {
+        const raw = localStorage.getItem(SAVED_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch { return []; }
+    }
+    function saveSavedJourneys(arr) {
+      localStorage.setItem(SAVED_KEY, JSON.stringify(arr));
+    }
+    function uid() { return Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5); }
 
     // --- Variables ---
     let map, path;
@@ -393,6 +394,7 @@
     let accuracyList = [];
     let chart = null;
     let graphVisible = true;
+    let savedJourneys = [];
 
     // --- Chart.js Accuracy Graph ---
     function setupChart() {
@@ -482,19 +484,23 @@
     }
 
     // --- Stats & status ---
+    function computeStats(jList, sTime) {
+      const pts = jList || [];
+      let dist = 0;
+      for (let i=1; i<pts.length; i++) {
+        dist += haversine(pts[i-1].latitude, pts[i-1].longitude, pts[i].latitude, pts[i].longitude);
+      }
+      const duration = sTime ? (Math.max(pts[pts.length-1]?.timestamp || sTime, sTime) - sTime) : 0;
+      return { distance: Math.round(dist), duration: Math.max(0, duration), points: pts.length };
+    }
     function updateStatsDisplay() {
       if (!journey.length) { document.getElementById('stats').textContent = ''; return; }
-      let dist = 0;
-      for (let i=1; i<journey.length; i++) {
-        dist += haversine(journey[i-1].latitude, journey[i-1].longitude, journey[i].latitude, journey[i].longitude);
-      }
-      dist = Math.round(dist);
-      let elapsed = startTime ? Date.now() - startTime : 0;
-      let speed = journey.length > 1 && journey[journey.length-1].speed !== null
+      const stats = computeStats(journey, startTime);
+      const speed = journey.length > 1 && journey[journey.length-1].speed !== null
         ? (journey[journey.length-1].speed*3.6).toFixed(1) + ' km/h' : '-';
-      let avgAcc = (journey.reduce((a,j)=>a+j.accuracy,0)/journey.length).toFixed(1);
+      const avgAcc = (journey.reduce((a,j)=>a+j.accuracy,0)/journey.length).toFixed(1);
       document.getElementById('stats').innerHTML =
-        `📏 ${dist} m · ⏱️ ${formatTime(elapsed)} · 🚀 ${speed} · 🎯 ${avgAcc} m`;
+        `📏 ${stats.distance} m · ⏱️ ${formatTime(stats.duration)} · 🚀 ${speed} · 🎯 ${avgAcc} m`;
     }
     function updateStatusDisplay(text, type='') {
       const el = document.getElementById('status');
@@ -532,9 +538,7 @@
       const dd = downloadBtnEl().parentElement;
       if (!dd.contains(e.target)) closeDownloadMenu();
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeDownloadMenu();
-    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDownloadMenu(); });
 
     // --- Export helpers ---
     function downloadBlob(content, mime, filename) {
@@ -546,13 +550,12 @@
       URL.revokeObjectURL(url);
     }
 
-    // --- Exporters ---
+    // --- Exporters (current journey) ---
     function downloadJourneyJSON() {
       const exportData = { journey, started, paused, startTime, minAccuracy, accuracyList };
       downloadBlob(JSON.stringify(exportData, null, 2), "application/json", "journey.json");
       updateStatusDisplay("JSON downloaded!", "ok");
     }
-
     function journeyToKml(journey) {
       if (!journey?.length) return '';
       const pathColor = 'ffae7621'; // aabbggrr
@@ -568,7 +571,7 @@
           `Lng: ${j.longitude.toFixed(6)}`,
           `Accuracy: ${j.accuracy} m`,
           `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1)+' km/h' : 'N/A'}`,
-          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
+          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1)+'°' : 'N/A'}`
         ].join(' | ');
         const when = isoTime(j.timestamp);
         kml += `      <Placemark>\n        <name>Point ${idx+1}</name>\n`;
@@ -583,14 +586,6 @@
       kml += `  </Document>\n</kml>\n`;
       return kml;
     }
-    function downloadJourneyKML() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const kml = journeyToKml(journey);
-      downloadBlob(kml, "application/vnd.google-earth.kml+xml", "journey.kml");
-      updateStatusDisplay("KML downloaded!", "ok");
-    }
-
-    // KML path-only (no pins)
     function journeyToKmlPathOnly(journey) {
       if (!journey?.length) return '';
       const pathColor = 'ffae7621';
@@ -614,13 +609,6 @@ ${coordsLine}
 </kml>
 `;
     }
-    function downloadJourneyKMLPathOnly() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const kml = journeyToKmlPathOnly(journey);
-      downloadBlob(kml, "application/vnd.google-earth.kml+xml", "journey_path_only.kml");
-      updateStatusDisplay("KML (path only) downloaded!", "ok");
-    }
-
     function journeyToGpx(journey) {
       if (!journey?.length) return '';
       let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GPS Journey Recorder" xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>GPS Journey</name>\n    <trkseg>\n`;
@@ -636,51 +624,18 @@ ${coordsLine}
       gpx += `    </trkseg>\n  </trk>\n</gpx>\n`;
       return gpx;
     }
-    function downloadJourneyGPX() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const gpx = journeyToGpx(journey);
-      downloadBlob(gpx, "application/gpx+xml", "journey.gpx");
-      updateStatusDisplay("GPX downloaded!", "ok");
-    }
-
     function journeyToCsv(journey, sep=',') {
       if (!journey?.length) return '';
       const header = ['latitude','longitude','accuracy','timestamp','speed','heading'].join(sep);
-      const rows = journey.map(j =>
-        [j.latitude, j.longitude, j.accuracy, isoTime(j.timestamp) || '', j.speed ?? '', j.heading ?? ''].join(sep)
-      );
+      const rows = journey.map(j => [j.latitude, j.longitude, j.accuracy, isoTime(j.timestamp) || '', j.speed ?? '', j.heading ?? ''].join(sep));
       return header + '\n' + rows.join('\n');
     }
-    function downloadJourneyCSV() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const csv = journeyToCsv(journey, ',');
-      downloadBlob(csv, "text/csv", "journey.csv");
-      updateStatusDisplay("CSV downloaded!", "ok");
-    }
-    function downloadJourneyTSV() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const tsv = journeyToCsv(journey, '\t');
-      downloadBlob(tsv, "text/tab-separated-values", "journey.tsv");
-      updateStatusDisplay("TSV downloaded!", "ok");
-    }
-    function downloadJourneyTXT() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const txt = journey.map(j => `${j.latitude},${j.longitude}`).join('\n');
-      downloadBlob(txt, "text/plain", "journey.txt");
-      updateStatusDisplay("Plain text downloaded!", "ok");
-    }
-
     function journeyToGeoJson(journey) {
       if (!journey?.length) return '';
       const features = journey.map(j => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: [j.longitude, j.latitude] },
-        properties: {
-          accuracy: j.accuracy,
-          timestamp: isoTime(j.timestamp),
-          speed: j.speed,
-          heading: j.heading
-        }
+        properties: { accuracy: j.accuracy, timestamp: isoTime(j.timestamp), speed: j.speed, heading: j.heading }
       }));
       const line = {
         type: "Feature",
@@ -689,12 +644,15 @@ ${coordsLine}
       };
       return JSON.stringify({ type: "FeatureCollection", features: [line, ...features] }, null, 2);
     }
-    function downloadJourneyGeoJSON() {
-      if (!journey.length) { updateStatusDisplay("No journey to export.", "warn"); return; }
-      const geojson = journeyToGeoJson(journey);
-      downloadBlob(geojson, "application/geo+json", "journey.geojson");
-      updateStatusDisplay("GeoJSON downloaded!", "ok");
-    }
+
+    // Downloads (current journey)
+    function downloadJourneyKML()      { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journeyToKml(journey), "application/vnd.google-earth.kml+xml", "journey.kml"); updateStatusDisplay("KML downloaded!", "ok"); }
+    function downloadJourneyKMLPathOnly() { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journeyToKmlPathOnly(journey), "application/vnd.google-earth.kml+xml", "journey_path_only.kml"); updateStatusDisplay("KML (path only) downloaded!", "ok"); }
+    function downloadJourneyGPX()      { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journeyToGpx(journey), "application/gpx+xml", "journey.gpx"); updateStatusDisplay("GPX downloaded!", "ok"); }
+    function downloadJourneyCSV()      { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journeyToCsv(journey, ','), "text/csv", "journey.csv"); updateStatusDisplay("CSV downloaded!", "ok"); }
+    function downloadJourneyTSV()      { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journeyToCsv(journey, '\\t'), "text/tab-separated-values", "journey.tsv"); updateStatusDisplay("TSV downloaded!", "ok"); }
+    function downloadJourneyTXT()      { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journey.map(j => `${j.latitude},${j.longitude}`).join('\\n'), "text/plain", "journey.txt"); updateStatusDisplay("Plain text downloaded!", "ok"); }
+    function downloadJourneyGeoJSON()  { if (!journey.length) return updateStatusDisplay("No journey to export.", "warn"); downloadBlob(journeyToGeoJson(journey), "application/geo+json", "journey.geojson"); updateStatusDisplay("GeoJSON downloaded!", "ok"); }
 
     // --- Recording ---
     function startJourney() {
@@ -753,11 +711,7 @@ ${coordsLine}
           }
         },
         err => { updateStatusDisplay("Location error: " + err.message, "err"); },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 1500
-        }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 1500 }
       );
     }
     function pauseJourney() {
@@ -811,7 +765,7 @@ ${coordsLine}
       clearStorage();
     }
 
-    // --- Restore ---
+    // --- Restore current ---
     function restorePins() {
       clearPins(); createClusterGroup();
       journey.forEach(j => {
@@ -852,7 +806,157 @@ ${coordsLine}
       setTimeout(() => { if (map) map.invalidateSize(); }, 150);
     });
 
-    // --- Event Listeners ---
+    // --- Journeys Modal logic ---
+    const journeysModal = document.getElementById('journeysModal');
+    const journeysListEl = document.getElementById('journeysList');
+    const journeyNameInput = document.getElementById('journeyNameInput');
+
+    function openJourneysModal() {
+      // Suggest a name
+      const suggest = suggestJourneyName();
+      journeyNameInput.value = suggest;
+      renderJourneysList();
+      journeysModal.classList.add('open');
+      journeysModal.setAttribute('aria-hidden', 'false');
+    }
+    function closeJourneysModal() {
+      journeysModal.classList.remove('open');
+      journeysModal.setAttribute('aria-hidden', 'true');
+    }
+    function suggestJourneyName() {
+      if (journey.length && startTime) {
+        const d = new Date(startTime);
+        const datePart = d.toLocaleDateString();
+        const timePart = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        return `Journey ${datePart} ${timePart}`;
+      }
+      const now = new Date();
+      return `Journey ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    }
+    function renderJourneysList() {
+      savedJourneys = loadSavedJourneys();
+      if (!savedJourneys.length) {
+        journeysListEl.innerHTML = `<div class="empty">No saved journeys yet. Record a route and click “Save current”.</div>`;
+        return;
+      }
+      journeysListEl.innerHTML = savedJourneys.map(item => {
+        const stats = item.stats || computeStats(item.data?.journey || [], item.data?.startTime || 0);
+        const created = formatDate(item.createdAt);
+        return `
+          <div class="card" data-id="${item.id}">
+            <div>
+              <div class="card-title">${escapeHtml(item.name || 'Untitled')}</div>
+              <div class="card-sub">${created} · ${stats.points} pts · ${stats.distance} m · ${formatTime(stats.duration)}</div>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary js-load">Load</button>
+              <button class="btn btn-ghost js-rename">Rename</button>
+              <button class="btn btn-danger js-delete">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    function saveCurrentJourneyByName(name) {
+      if (!journey.length) { updateStatusDisplay("Nothing to save (no points).", "warn"); return false; }
+      const data = { journey: JSON.parse(JSON.stringify(journey)), started, paused, startTime, minAccuracy, accuracyList: JSON.parse(JSON.stringify(accuracyList)) };
+      const stats = computeStats(data.journey, data.startTime);
+      const item = {
+        id: uid(),
+        name: name || suggestJourneyName(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        stats,
+        data
+      };
+      const arr = loadSavedJourneys();
+      arr.unshift(item);
+      saveSavedJourneys(arr);
+      updateStatusDisplay(`Saved as “${item.name}”`, "ok");
+      return true;
+    }
+    function loadJourneyById(id) {
+      const arr = loadSavedJourneys();
+      const item = arr.find(x => x.id === id);
+      if (!item) { updateStatusDisplay("Journey not found.", "err"); return; }
+      // Replace current state with saved data
+      if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
+      const d = item.data || {};
+      journey = Array.isArray(d.journey) ? d.journey : [];
+      started = false; paused = false;
+      startTime = d.startTime || (journey[0]?.timestamp || Date.now());
+      minAccuracy = (typeof d.minAccuracy === 'number') ? d.minAccuracy : minAccuracy;
+      accuracyList = Array.isArray(d.accuracyList) ? d.accuracyList : [];
+      document.getElementById('accuracyInput').value = minAccuracy;
+
+      // Update UI into stopped state with path drawn
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('pauseBtn').disabled = true;
+      document.getElementById('resumeBtn').disabled = true;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('resetBtn').disabled = journey.length === 0;
+      setDownloadEnabled(journey.length !== 0);
+
+      clearPins();
+      restorePath();
+      restoreChart();
+      updateStatsDisplay();
+      saveToStorage();
+      updateStatusDisplay(`Loaded “${item.name}”`, "ok");
+      closeJourneysModal();
+    }
+    function renameJourneyById(id) {
+      const arr = loadSavedJourneys();
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx === -1) { updateStatusDisplay("Journey not found.", "err"); return; }
+      const current = arr[idx];
+      const newName = prompt("Rename journey:", current.name || 'Untitled');
+      if (newName === null) return; // cancelled
+      const trimmed = newName.trim();
+      if (!trimmed) { updateStatusDisplay("Name cannot be empty.", "warn"); return; }
+      current.name = trimmed;
+      current.updatedAt = Date.now();
+      arr[idx] = current;
+      saveSavedJourneys(arr);
+      renderJourneysList();
+      updateStatusDisplay("Journey renamed.", "ok");
+    }
+    function deleteJourneyById(id) {
+      const arr = loadSavedJourneys();
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx === -1) { updateStatusDisplay("Journey not found.", "err"); return; }
+      const ok = confirm(`Delete “${arr[idx].name}”? This cannot be undone.`);
+      if (!ok) return;
+      arr.splice(idx, 1);
+      saveSavedJourneys(arr);
+      renderJourneysList();
+      updateStatusDisplay("Journey deleted.", "ok");
+    }
+
+    // Journeys modal events
+    document.getElementById('journeysBtn').addEventListener('click', openJourneysModal);
+    document.getElementById('closeJourneys').addEventListener('click', closeJourneysModal);
+    journeysModal.addEventListener('click', (e) => { if (e.target.dataset.close) closeJourneysModal(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && journeysModal.classList.contains('open')) closeJourneysModal();
+    });
+    document.getElementById('saveJourneyBtn').addEventListener('click', () => {
+      const name = (journeyNameInput.value || '').trim() || suggestJourneyName();
+      const ok = saveCurrentJourneyByName(name);
+      if (ok) { renderJourneysList(); }
+    });
+    journeysListEl.addEventListener('click', (e) => {
+      const card = e.target.closest('.card');
+      if (!card) return;
+      const id = card.getAttribute('data-id');
+      if (e.target.classList.contains('js-load'))   return loadJourneyById(id);
+      if (e.target.classList.contains('js-rename')) return renameJourneyById(id);
+      if (e.target.classList.contains('js-delete')) return deleteJourneyById(id);
+    });
+
+    // --- Event Listeners (main controls) ---
     document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage(); });
     document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney(); });
     document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney(); });
@@ -878,6 +982,7 @@ ${coordsLine}
     // --- On Load ---
     window.onload = function() {
       setupChart();
+      savedJourneys = loadSavedJourneys();
       let d = loadFromStorage();
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -910,7 +1015,7 @@ ${coordsLine}
                 document.getElementById('pauseBtn').disabled = true;
                 document.getElementById('resumeBtn').disabled = true;
                 document.getElementById('stopBtn').disabled = true;
-                document.getElementById('resetBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = journey.length === 0;
                 setDownloadEnabled(journey.length !== 0);
                 document.getElementById('accuracyInput').disabled = false;
                 updateStatusDisplay("Journey loaded. Path restored.", "ok");
