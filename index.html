@@ -115,6 +115,7 @@
     .btn-chip { background: #eaf4fb; color: var(--accent-dark); border-radius: 999px; padding: 8px 12px; }
     @media (prefers-color-scheme: dark) { .btn-chip { background: #0b2030; } }
     .btn-icon { padding: 10px; width: 44px; min-width: 44px; justify-content: center; }
+    .btn-toggle[aria-pressed="true"] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 
     /* Button group */
     .btn-group {
@@ -231,9 +232,7 @@
       font-size: 15px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(2,6,23,.12);
       background: var(--surface); color: var(--text); outline: none; width: 100%;
     }
-    .list {
-      margin-top: 12px; display: grid; gap: 10px;
-    }
+    .list { margin-top: 12px; display: grid; gap: 10px; }
     .card {
       border: 1px solid rgba(2,6,23,.08); border-radius: 12px; background: var(--surface);
       padding: 10px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
@@ -263,6 +262,9 @@
         </div>
 
         <button id="toggleGraph" class="btn btn-outline btn-icon" title="Show/hide accuracy graph" aria-pressed="true">📊</button>
+
+        <!-- Keep Awake -->
+        <button id="keepAwakeBtn" class="btn btn-outline btn-toggle" title="Prevent screen auto-lock">🔆 Keep Awake</button>
 
         <!-- Journeys manager -->
         <button id="journeysBtn" class="btn btn-ghost" title="Open journeys">🗂️ Journeys</button>
@@ -395,6 +397,10 @@
     let chart = null;
     let graphVisible = true;
     let savedJourneys = [];
+
+    // Keep Awake (Screen Wake Lock)
+    let wakeLock = null;
+    let keepAwakeEnabled = false;
 
     // --- Chart.js Accuracy Graph ---
     function setupChart() {
@@ -806,13 +812,12 @@ ${coordsLine}
       setTimeout(() => { if (map) map.invalidateSize(); }, 150);
     });
 
-    // --- Journeys Modal logic ---
+    // --- Journeys (manager) ---
     const journeysModal = document.getElementById('journeysModal');
     const journeysListEl = document.getElementById('journeysList');
     const journeyNameInput = document.getElementById('journeyNameInput');
 
     function openJourneysModal() {
-      // Suggest a name
       const suggest = suggestJourneyName();
       journeyNameInput.value = suggest;
       renderJourneysList();
@@ -836,7 +841,7 @@ ${coordsLine}
     function renderJourneysList() {
       savedJourneys = loadSavedJourneys();
       if (!savedJourneys.length) {
-        journeysListEl.innerHTML = `<div class="empty">No saved journeys yet. Record a route and click “Save current”.</div>`;
+        journeysListEl.innerHTML = `<div class="empty">No saved journeys yet. Record a route and tap “Save current”.</div>`;
         return;
       }
       journeysListEl.innerHTML = savedJourneys.map(item => {
@@ -881,7 +886,6 @@ ${coordsLine}
       const arr = loadSavedJourneys();
       const item = arr.find(x => x.id === id);
       if (!item) { updateStatusDisplay("Journey not found.", "err"); return; }
-      // Replace current state with saved data
       if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
       const d = item.data || {};
       journey = Array.isArray(d.journey) ? d.journey : [];
@@ -891,7 +895,6 @@ ${coordsLine}
       accuracyList = Array.isArray(d.accuracyList) ? d.accuracyList : [];
       document.getElementById('accuracyInput').value = minAccuracy;
 
-      // Update UI into stopped state with path drawn
       document.getElementById('startBtn').disabled = false;
       document.getElementById('pauseBtn').disabled = true;
       document.getElementById('resumeBtn').disabled = true;
@@ -913,7 +916,7 @@ ${coordsLine}
       if (idx === -1) { updateStatusDisplay("Journey not found.", "err"); return; }
       const current = arr[idx];
       const newName = prompt("Rename journey:", current.name || 'Untitled');
-      if (newName === null) return; // cancelled
+      if (newName === null) return;
       const trimmed = newName.trim();
       if (!trimmed) { updateStatusDisplay("Name cannot be empty.", "warn"); return; }
       current.name = trimmed;
@@ -955,6 +958,51 @@ ${coordsLine}
       if (e.target.classList.contains('js-rename')) return renameJourneyById(id);
       if (e.target.classList.contains('js-delete')) return deleteJourneyById(id);
     });
+
+    // --- Keep Awake toggle (Screen Wake Lock API) ---
+    const keepAwakeBtn = document.getElementById('keepAwakeBtn');
+
+    async function enableWakeLock() {
+      if (!('wakeLock' in navigator)) {
+        updateStatusDisplay("Wake Lock not supported on this browser. Tip: Settings → Display & Brightness → Auto-Lock: Never (temporarily).", "warn");
+        return false;
+      }
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        keepAwakeEnabled = true;
+        keepAwakeBtn.setAttribute('aria-pressed', 'true');
+        updateStatusDisplay("Keep Awake enabled. Screen won't auto-lock.", "ok");
+        wakeLock.addEventListener('release', () => {
+          keepAwakeEnabled = false;
+          keepAwakeBtn.setAttribute('aria-pressed', 'false');
+          updateStatusDisplay("Keep Awake was released.", "warn");
+        });
+        return true;
+      } catch (err) {
+        updateStatusDisplay("Failed to enable Keep Awake: " + err.message, "err");
+        return false;
+      }
+    }
+    async function disableWakeLock() {
+      try {
+        if (wakeLock) { await wakeLock.release(); }
+      } catch {}
+      wakeLock = null;
+      keepAwakeEnabled = false;
+      keepAwakeBtn.setAttribute('aria-pressed', 'false');
+      updateStatusDisplay("Keep Awake disabled.", "ok");
+    }
+    async function toggleKeepAwake() {
+      if (keepAwakeEnabled) return disableWakeLock();
+      return enableWakeLock();
+    }
+    // Reacquire wake lock on visibility change (iOS can release it when screen off/on)
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible' && keepAwakeEnabled && !wakeLock && 'wakeLock' in navigator) {
+        try { await enableWakeLock(); } catch {}
+      }
+    });
+    keepAwakeBtn.addEventListener('click', toggleKeepAwake);
 
     // --- Event Listeners (main controls) ---
     document.getElementById('startBtn').addEventListener('click', function(){ startJourney(); saveToStorage(); });
