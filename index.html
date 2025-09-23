@@ -183,6 +183,37 @@
       #chart { height: 80px; }
       #map { min-height: 130px; height: 38vh; }
     }
+
+    /* Download menu */
+    .dropdown { position: relative; display: inline-block; }
+    .menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #fff;
+      border: 1px solid #e0e7ef;
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      border-radius: 8px;
+      padding: 6px;
+      display: none;
+      min-width: 180px;
+      z-index: 1100;
+    }
+    .menu.open { display: block; }
+    .menu .item {
+      width: 100%;
+      background: transparent;
+      color: #222;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: none;
+      min-height: auto;
+      min-width: auto;
+      box-shadow: none;
+      font-size: 1em;
+    }
+    .menu .item:hover { background: #f2f6fa; }
   </style>
 </head>
 <body>
@@ -192,8 +223,15 @@
       <button id="pauseBtn" disabled title="Pause recording">Pause</button>
       <button id="resumeBtn" disabled title="Resume recording">Resume</button>
       <button id="stopBtn" disabled title="Stop and show path">Stop</button>
-      <button id="downloadBtn" disabled title="Download journey JSON">Download</button>
-      <button id="downloadKmlBtn" disabled title="Download KML (Google Earth)">Download KML</button>
+
+      <div class="dropdown">
+        <button id="downloadBtn" disabled title="Download">Download ▾</button>
+        <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
+          <button id="downloadJson" class="item" role="menuitem">JSON</button>
+          <button id="downloadKml" class="item" role="menuitem">KML (Google Earth)</button>
+        </div>
+      </div>
+
       <button id="resetBtn" disabled title="Reset journey">Reset</button>
     </div>
     <div class="control-group">
@@ -233,11 +271,14 @@
       return `${h>0?h+':':''}${m<10?'0':''}${m}:${s<10?'0':''}${s}`;
     }
     function formatDate(ts) {
+      if (ts === undefined || ts === null || Number.isNaN(ts)) return '';
       const d = new Date(ts);
-      return d.toLocaleTimeString();
+      return isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
     }
     function isoTime(ts) {
-      return new Date(ts).toISOString();
+      if (ts === undefined || ts === null || Number.isNaN(ts)) return '';
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? '' : d.toISOString();
     }
     function saveToStorage() {
       localStorage.setItem('journey_gps', JSON.stringify({
@@ -252,7 +293,8 @@
     function clearStorage() { localStorage.removeItem('journey_gps'); }
 
     // --- Variables ---
-    let map, path, watchId;
+    let map, path;
+    let watchId = null;
     let journey = [];
     let markerCluster = null;
     let started = false;
@@ -328,7 +370,6 @@
       } else { path.setLatLngs(points); if(points.length) map.fitBounds(path.getBounds()); }
     }
     function updateLivePath() {
-      // Draw path live while recording
       const points = journey.map(j => [j.latitude, j.longitude]);
       if (path) map.removeLayer(path);
       path = L.polyline(points, { color:'#2176ae', weight:5 }).addTo(map);
@@ -350,12 +391,39 @@
       document.getElementById('stats').innerHTML =
         `Distance: <b>${dist} m</b> | Time: <b>${formatTime(elapsed)}</b> | Speed: <b>${speed}</b> | Avg Acc: <b>${avgAcc} m</b>`;
     }
-    function updateStatusDisplay(text) { document.getElementById('status').textContent = text; }
+    function updateStatusDisplay(text) { document.getElementById('status')..textContent = text; }
+
+    // --- Download menu helpers ---
+    const downloadBtn = () => document.getElementById('downloadBtn');
+    const downloadMenu = () => document.getElementById('downloadMenu');
+    function setDownloadEnabled(enabled) {
+      downloadBtn().disabled = !enabled;
+      if (!enabled) closeDownloadMenu();
+    }
+    function toggleDownloadMenu() {
+      if (downloadBtn().disabled) return;
+      const menu = downloadMenu();
+      const isOpen = menu.classList.contains('open');
+      menu.classList.toggle('open', !isOpen);
+      menu.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+    }
+    function closeDownloadMenu() {
+      const menu = downloadMenu();
+      menu.classList.remove('open');
+      menu.setAttribute('aria-hidden', 'true');
+    }
+    document.addEventListener('click', (e) => {
+      const dd = downloadBtn().parentElement;
+      if (!dd.contains(e.target)) closeDownloadMenu();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDownloadMenu();
+    });
 
     // --- KML Export ---
     function journeyToKml(journey) {
       if (!journey || journey.length === 0) return '';
-      // KML color is aabbggrr; '#2176ae' -> aabbggrr: ff ae 76 21
+      // KML color is aabbggrr; '#2176ae' -> ff ae 76 21
       const pathColor = 'ffae7621';
       const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
 
@@ -384,9 +452,10 @@
           `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1) + ' km/h' : 'N/A'}`,
           `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
         ].join(' | ');
+        const when = isoTime(j.timestamp);
         kml += `      <Placemark>\n`;
         kml += `        <name>Point ${idx+1}</name>\n`;
-        kml += `        <TimeStamp><when>${isoTime(j.timestamp)}</when></TimeStamp>\n`;
+        if (when) kml += `        <TimeStamp><when>${when}</when></TimeStamp>\n`;
         kml += `        <description><![CDATA[${desc}]]></description>\n`;
         kml += `        <Point><coordinates>${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0</coordinates></Point>\n`;
         kml += `      </Placemark>\n`;
@@ -396,8 +465,10 @@
       // Start and end markers
       const first = journey[0];
       const last = journey[journey.length - 1];
-      kml += `    <Placemark><name>Start</name><TimeStamp><when>${isoTime(first.timestamp)}</when></TimeStamp><Point><coordinates>${first.longitude.toFixed(6)},${first.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
-      kml += `    <Placemark><name>End</name><TimeStamp><when>${isoTime(last.timestamp)}</when></TimeStamp><Point><coordinates>${last.longitude.toFixed(6)},${last.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
+      const firstWhen = isoTime(first.timestamp);
+      const lastWhen = isoTime(last.timestamp);
+      kml += `    <Placemark><name>Start</name>${firstWhen?`<TimeStamp><when>${firstWhen}</when></TimeStamp>`:''}<Point><coordinates>${first.longitude.toFixed(6)},${first.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
+      kml += `    <Placemark><name>End</name>${lastWhen?`<TimeStamp><when>${lastWhen}</when></TimeStamp>`:''}<Point><coordinates>${last.longitude.toFixed(6)},${last.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
 
       kml += `  </Document>\n`;
       kml += `</kml>\n`;
@@ -416,6 +487,17 @@
       updateStatusDisplay("KML downloaded!");
     }
 
+    function downloadJourneyJSON() {
+      // Same as the original: only the points array
+      const blob = new Blob([JSON.stringify(journey,null,2)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.json";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("Journey JSON downloaded!");
+    }
+
     // --- Recording ---
     function startJourney() {
       if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!"); return; }
@@ -425,8 +507,7 @@
       document.getElementById('pauseBtn').disabled = false;
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = false;
-      document.getElementById('downloadBtn').disabled = true;
-      document.getElementById('downloadKmlBtn').disabled = true;
+      setDownloadEnabled(false);
       document.getElementById('resetBtn').disabled = false;
       document.getElementById('accuracyInput').disabled = false;
       if (!startTime) startTime = Date.now();
@@ -436,8 +517,8 @@
       watchId = navigator.geolocation.watchPosition(
         pos => {
           if (paused) return;
-          const { latitude, longitude, accuracy, timestamp, speed, heading } = pos.coords;
-          // Only record if accuracy meets threshold
+          const { latitude, longitude, accuracy, speed, heading } = pos.coords;
+          const timestamp = pos.timestamp; // important: timestamp is on Position, not coords
           if (accuracy <= minAccuracy) {
             // Smoothing: moving average with last 2 points (if available)
             let lat = latitude, lng = longitude;
@@ -445,7 +526,12 @@
               lat = (journey[journey.length-1].latitude + journey[journey.length-2].latitude + latitude)/3;
               lng = (journey[journey.length-1].longitude + journey[journey.length-2].longitude + longitude)/3;
             }
-            journey.push({ latitude:lat, longitude:lng, accuracy, timestamp, speed: speed!==undefined?speed:null, heading: heading!==undefined?heading:null });
+            journey.push({
+              latitude: lat, longitude: lng, accuracy,
+              timestamp,
+              speed: speed!==undefined?speed:null,
+              heading: heading!==undefined?heading:null
+            });
             accuracyList.push(accuracy);
             saveToStorage();
             const infoHTML = `
@@ -470,7 +556,7 @@
         {
           enableHighAccuracy:true,
           maximumAge:0,
-          timeout:1000 // 1 second for highest frequency possible
+          timeout:1000
         }
       );
     }
@@ -496,9 +582,7 @@
       document.getElementById('pauseBtn').disabled = true;
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = true;
-      const canDownload = journey.length === 0 ? true : false; // convenience var not used, keep logic below
-      document.getElementById('downloadBtn').disabled = journey.length === 0;
-      document.getElementById('downloadKmlBtn').disabled = journey.length === 0;
+      setDownloadEnabled(journey.length !== 0);
       document.getElementById('accuracyInput').disabled = false;
       updateStatusDisplay("Stopped. Path drawn.");
       clearPins();
@@ -506,15 +590,6 @@
       drawPath(points, true);
       updateStatsDisplay();
       if (timerInterval) clearInterval(timerInterval);
-    }
-    function downloadJourney() {
-      const blob = new Blob([JSON.stringify(journey,null,2)], {type:"application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.json";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("Journey JSON downloaded!");
     }
     function resetAll() {
       if (watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
@@ -525,8 +600,7 @@
       document.getElementById('pauseBtn').disabled = true;
       document.getElementById('resumeBtn').disabled = true;
       document.getElementById('stopBtn').disabled = true;
-      document.getElementById('downloadBtn').disabled = true;
-      document.getElementById('downloadKmlBtn').disabled = true;
+      setDownloadEnabled(false);
       document.getElementById('resetBtn').disabled = true;
       document.getElementById('accuracyInput').disabled = false;
       startTime = null; accuracyList = [];
@@ -581,8 +655,11 @@
     document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney();});
     document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney();});
     document.getElementById('stopBtn').addEventListener('click', function(){ stopJourney(true); saveToStorage();});
-    document.getElementById('downloadBtn').addEventListener('click', downloadJourney);
-    document.getElementById('downloadKmlBtn').addEventListener('click', downloadJourneyKML);
+
+    downloadBtn().addEventListener('click', function(){ toggleDownloadMenu(); });
+    document.getElementById('downloadJson').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyJSON(); });
+    document.getElementById('downloadKml').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyKML(); });
+
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('accuracyInput').addEventListener('change', function(e){
       minAccuracy = Number(e.target.value);
@@ -614,8 +691,7 @@
                 document.getElementById('resumeBtn').disabled = paused?false:true;
                 document.getElementById('stopBtn').disabled = false;
                 document.getElementById('resetBtn').disabled = false;
-                document.getElementById('downloadBtn').disabled = true;
-                document.getElementById('downloadKmlBtn').disabled = true;
+                setDownloadEnabled(false);
                 document.getElementById('accuracyInput').disabled = false;
                 updateStatusDisplay(paused?"Paused":"Resumed recording.");
                 timerInterval = setInterval(updateStatsDisplay,1000);
@@ -627,15 +703,13 @@
                 document.getElementById('resumeBtn').disabled = true;
                 document.getElementById('stopBtn').disabled = true;
                 document.getElementById('resetBtn').disabled = false;
-                document.getElementById('downloadBtn').disabled = journey.length === 0;
-                document.getElementById('downloadKmlBtn').disabled = journey.length === 0;
+                setDownloadEnabled(journey.length !== 0);
                 document.getElementById('accuracyInput').disabled = false;
                 updateStatusDisplay("Journey loaded. Path restored.");
               }
             } else {
               document.getElementById('resetBtn').disabled = true;
-              document.getElementById('downloadBtn').disabled = true;
-              document.getElementById('downloadKmlBtn').disabled = true;
+              setDownloadEnabled(false);
               document.getElementById('accuracyInput').disabled = false;
               updateStatusDisplay("Ready.");
             }
