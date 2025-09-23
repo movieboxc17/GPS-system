@@ -212,6 +212,7 @@
       min-width: auto;
       box-shadow: none;
       font-size: 1em;
+      cursor: pointer;
     }
     .menu .item:hover { background: #f2f6fa; }
   </style>
@@ -227,7 +228,7 @@
       <div class="dropdown">
         <button id="downloadBtn" disabled title="Download">Download ▾</button>
         <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
-          <button id="downloadJson" class="item" role="menuitem">JSON</button>
+          <button id="downloadJson" class="item" role="menuitem">JSON (with metadata)</button>
           <button id="downloadKml" class="item" role="menuitem">KML (Google Earth)</button>
         </div>
       </div>
@@ -248,6 +249,7 @@
     <canvas id="chart"></canvas>
   </div>
   <div id="map"></div>
+
   <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
@@ -391,7 +393,7 @@
       document.getElementById('stats').innerHTML =
         `Distance: <b>${dist} m</b> | Time: <b>${formatTime(elapsed)}</b> | Speed: <b>${speed}</b> | Avg Acc: <b>${avgAcc} m</b>`;
     }
-    function updateStatusDisplay(text) { document.getElementById('status')..textContent = text; }
+    function updateStatusDisplay(text) { document.getElementById('status').textContent = text; }
 
     // --- Download menu helpers ---
     const downloadBtn = () => document.getElementById('downloadBtn');
@@ -423,7 +425,7 @@
     // --- KML Export ---
     function journeyToKml(journey) {
       if (!journey || journey.length === 0) return '';
-      // KML color is aabbggrr; '#2176ae' -> ff ae 76 21
+      // KML color format is aabbggrr; '#2176ae' -> ff ae 76 21
       const pathColor = 'ffae7621';
       const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
 
@@ -488,14 +490,22 @@
     }
 
     function downloadJourneyJSON() {
-      // Same as the original: only the points array
-      const blob = new Blob([JSON.stringify(journey,null,2)], {type:"application/json"});
+      // Export the full metadata object (not just the points array)
+      const exportData = {
+        journey,
+        started,
+        paused,
+        startTime,
+        minAccuracy,
+        accuracyList
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = "journey.json";
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      updateStatusDisplay("Journey JSON downloaded!");
+      updateStatusDisplay("Journey JSON (with metadata) downloaded!");
     }
 
     // --- Recording ---
@@ -518,7 +528,7 @@
         pos => {
           if (paused) return;
           const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-          const timestamp = pos.timestamp; // important: timestamp is on Position, not coords
+          const timestamp = pos.timestamp; // timestamp is on Position, not coords
           if (accuracy <= minAccuracy) {
             // Smoothing: moving average with last 2 points (if available)
             let lat = latitude, lng = longitude;
