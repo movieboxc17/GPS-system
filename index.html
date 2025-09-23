@@ -183,8 +183,6 @@
       #chart { height: 80px; }
       #map { min-height: 130px; height: 38vh; }
     }
-
-    /* Download menu */
     .dropdown { position: relative; display: inline-block; }
     .menu {
       position: absolute;
@@ -196,7 +194,7 @@
       border-radius: 8px;
       padding: 6px;
       display: none;
-      min-width: 180px;
+      min-width: 220px;
       z-index: 1100;
     }
     .menu.open { display: block; }
@@ -224,15 +222,18 @@
       <button id="pauseBtn" disabled title="Pause recording">Pause</button>
       <button id="resumeBtn" disabled title="Resume recording">Resume</button>
       <button id="stopBtn" disabled title="Stop and show path">Stop</button>
-
       <div class="dropdown">
         <button id="downloadBtn" disabled title="Download">Download ▾</button>
         <div id="downloadMenu" class="menu" role="menu" aria-hidden="true">
           <button id="downloadJson" class="item" role="menuitem">JSON (with metadata)</button>
           <button id="downloadKml" class="item" role="menuitem">KML (Google Earth)</button>
+          <button id="downloadGpx" class="item" role="menuitem">GPX (GPS Exchange)</button>
+          <button id="downloadCsv" class="item" role="menuitem">CSV</button>
+          <button id="downloadTsv" class="item" role="menuitem">TSV</button>
+          <button id="downloadTxt" class="item" role="menuitem">Plain Text Coordinates</button>
+          <button id="downloadGeoJson" class="item" role="menuitem">GeoJSON</button>
         </div>
       </div>
-
       <button id="resetBtn" disabled title="Reset journey">Reset</button>
     </div>
     <div class="control-group">
@@ -249,7 +250,6 @@
     <canvas id="chart"></canvas>
   </div>
   <div id="map"></div>
-
   <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
@@ -422,75 +422,8 @@
       if (e.key === 'Escape') closeDownloadMenu();
     });
 
-    // --- KML Export ---
-    function journeyToKml(journey) {
-      if (!journey || journey.length === 0) return '';
-      // KML color format is aabbggrr; '#2176ae' -> ff ae 76 21
-      const pathColor = 'ffae7621';
-      const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
-
-      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-      kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
-      kml += `  <Document>\n`;
-      kml += `    <name>GPS Journey</name>\n`;
-      kml += `    <Style id="pathStyle"><LineStyle><color>${pathColor}</color><width>4</width></LineStyle></Style>\n`;
-      kml += `    <Placemark>\n`;
-      kml += `      <name>Path</name>\n`;
-      kml += `      <styleUrl>#pathStyle</styleUrl>\n`;
-      kml += `      <LineString>\n`;
-      kml += `        <tessellate>1</tessellate>\n`;
-      kml += `        <coordinates>\n${coordsLine}\n        </coordinates>\n`;
-      kml += `      </LineString>\n`;
-      kml += `    </Placemark>\n`;
-
-      // Points with details
-      kml += `    <Folder>\n`;
-      kml += `      <name>Points</name>\n`;
-      journey.forEach((j, idx) => {
-        const desc = [
-          `Lat: ${j.latitude.toFixed(6)}`,
-          `Lng: ${j.longitude.toFixed(6)}`,
-          `Accuracy: ${j.accuracy} m`,
-          `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1) + ' km/h' : 'N/A'}`,
-          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
-        ].join(' | ');
-        const when = isoTime(j.timestamp);
-        kml += `      <Placemark>\n`;
-        kml += `        <name>Point ${idx+1}</name>\n`;
-        if (when) kml += `        <TimeStamp><when>${when}</when></TimeStamp>\n`;
-        kml += `        <description><![CDATA[${desc}]]></description>\n`;
-        kml += `        <Point><coordinates>${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0</coordinates></Point>\n`;
-        kml += `      </Placemark>\n`;
-      });
-      kml += `    </Folder>\n`;
-
-      // Start and end markers
-      const first = journey[0];
-      const last = journey[journey.length - 1];
-      const firstWhen = isoTime(first.timestamp);
-      const lastWhen = isoTime(last.timestamp);
-      kml += `    <Placemark><name>Start</name>${firstWhen?`<TimeStamp><when>${firstWhen}</when></TimeStamp>`:''}<Point><coordinates>${first.longitude.toFixed(6)},${first.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
-      kml += `    <Placemark><name>End</name>${lastWhen?`<TimeStamp><when>${lastWhen}</when></TimeStamp>`:''}<Point><coordinates>${last.longitude.toFixed(6)},${last.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
-
-      kml += `  </Document>\n`;
-      kml += `</kml>\n`;
-      return kml;
-    }
-
-    function downloadJourneyKML() {
-      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
-      const kml = journeyToKml(journey);
-      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = "journey.kml";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      updateStatusDisplay("KML downloaded!");
-    }
-
+    // --- Download Format Generators ---
     function downloadJourneyJSON() {
-      // Export the full metadata object (not just the points array)
       const exportData = {
         journey,
         started,
@@ -507,8 +440,152 @@
       URL.revokeObjectURL(url);
       updateStatusDisplay("Journey JSON (with metadata) downloaded!");
     }
+    function journeyToKml(journey) {
+      if (!journey || journey.length === 0) return '';
+      const pathColor = 'ffae7621';
+      const coordsLine = journey.map(j => `${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0`).join('\n');
+      let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>GPS Journey</name>\n`;
+      kml += `    <Style id="pathStyle"><LineStyle><color>${pathColor}</color><width>4</width></LineStyle></Style>\n`;
+      kml += `    <Placemark>\n      <name>Path</name>\n      <styleUrl>#pathStyle</styleUrl>\n      <LineString>\n        <tessellate>1</tessellate>\n        <coordinates>\n${coordsLine}\n        </coordinates>\n      </LineString>\n    </Placemark>\n`;
+      kml += `    <Folder>\n      <name>Points</name>\n`;
+      journey.forEach((j, idx) => {
+        const desc = [
+          `Lat: ${j.latitude.toFixed(6)}`,
+          `Lng: ${j.longitude.toFixed(6)}`,
+          `Accuracy: ${j.accuracy} m`,
+          `Speed: ${j.speed !== undefined && j.speed !== null ? (j.speed*3.6).toFixed(1) + ' km/h' : 'N/A'}`,
+          `Heading: ${j.heading !== undefined && j.heading !== null ? j.heading.toFixed(1) + '°' : 'N/A'}`
+        ].join(' | ');
+        const when = isoTime(j.timestamp);
+        kml += `      <Placemark>\n        <name>Point ${idx+1}</name>\n`;
+        if (when) kml += `        <TimeStamp><when>${when}</when></TimeStamp>\n`;
+        kml += `        <description><![CDATA[${desc}]]></description>\n        <Point><coordinates>${j.longitude.toFixed(6)},${j.latitude.toFixed(6)},0</coordinates></Point>\n      </Placemark>\n`;
+      });
+      kml += `    </Folder>\n`;
+      const first = journey[0], last = journey[journey.length - 1];
+      const firstWhen = isoTime(first.timestamp), lastWhen = isoTime(last.timestamp);
+      kml += `    <Placemark><name>Start</name>${firstWhen?`<TimeStamp><when>${firstWhen}</when></TimeStamp>`:''}<Point><coordinates>${first.longitude.toFixed(6)},${first.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
+      kml += `    <Placemark><name>End</name>${lastWhen?`<TimeStamp><when>${lastWhen}</when></TimeStamp>`:''}<Point><coordinates>${last.longitude.toFixed(6)},${last.latitude.toFixed(6)},0</coordinates></Point></Placemark>\n`;
+      kml += `  </Document>\n</kml>\n`;
+      return kml;
+    }
+    function downloadJourneyKML() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const kml = journeyToKml(journey);
+      const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.kml";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("KML downloaded!");
+    }
+    function journeyToGpx(journey) {
+      if (!journey || journey.length === 0) return '';
+      let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GPS Journey Recorder"\n  xmlns="http://www.topografix.com/GPX/1/1">\n  <trk>\n    <name>GPS Journey</name>\n    <trkseg>\n`;
+      journey.forEach(j => {
+        const time = isoTime(j.timestamp);
+        gpx += `      <trkpt lat="${j.latitude}" lon="${j.longitude}">\n`;
+        if (j.accuracy !== undefined) gpx += `        <hdop>${j.accuracy}</hdop>\n`;
+        if (j.speed !== undefined && j.speed !== null) gpx += `        <speed>${j.speed}</speed>\n`;
+        if (j.heading !== undefined && j.heading !== null) gpx += `        <course>${j.heading}</course>\n`;
+        if (time) gpx += `        <time>${time}</time>\n`;
+        gpx += `      </trkpt>\n`;
+      });
+      gpx += `    </trkseg>\n  </trk>\n</gpx>\n`;
+      return gpx;
+    }
+    function downloadJourneyGPX() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const gpx = journeyToGpx(journey);
+      const blob = new Blob([gpx], { type: "application/gpx+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.gpx";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("GPX downloaded!");
+    }
+    function journeyToCsv(journey, sep=',') {
+      if (!journey || journey.length === 0) return '';
+      const header = ['latitude','longitude','accuracy','timestamp','speed','heading'].join(sep);
+      const rows = journey.map(j=>
+        [j.latitude, j.longitude, j.accuracy, isoTime(j.timestamp), j.speed!==undefined?j.speed:'', j.heading!==undefined?j.heading:''].join(sep)
+      );
+      return header+'\n'+rows.join('\n');
+    }
+    function downloadJourneyCSV() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const csv = journeyToCsv(journey, ',');
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.csv";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("CSV downloaded!");
+    }
+    function downloadJourneyTSV() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const tsv = journeyToCsv(journey, '\t');
+      const blob = new Blob([tsv], { type: "text/tab-separated-values" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.tsv";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("TSV downloaded!");
+    }
+    function downloadJourneyTXT() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const txt = journey.map(j=>(`${j.latitude},${j.longitude}`)).join('\n');
+      const blob = new Blob([txt], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.txt";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("Plain text coordinates downloaded!");
+    }
+    function journeyToGeoJson(journey) {
+      if (!journey || journey.length === 0) return '';
+      const features = journey.map(j => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [j.longitude, j.latitude] },
+        properties: {
+          accuracy: j.accuracy,
+          timestamp: isoTime(j.timestamp),
+          speed: j.speed,
+          heading: j.heading
+        }
+      }));
+      const line = {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: journey.map(j => [j.longitude, j.latitude])
+        },
+        properties: {}
+      };
+      return JSON.stringify({
+        type: "FeatureCollection",
+        features: [line, ...features]
+      }, null, 2);
+    }
+    function downloadJourneyGeoJSON() {
+      if (!journey.length) { updateStatusDisplay("No journey to export."); return; }
+      const geojson = journeyToGeoJson(journey);
+      const blob = new Blob([geojson], { type: "application/geo+json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "journey.geojson";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      updateStatusDisplay("GeoJSON downloaded!");
+    }
 
-    // --- Recording ---
+    // --- Recording (unchanged) ---
     function startJourney() {
       if (!navigator.geolocation) { updateStatusDisplay("Geolocation not supported!"); return; }
       started = true; paused = false; saveToStorage();
@@ -528,9 +605,8 @@
         pos => {
           if (paused) return;
           const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-          const timestamp = pos.timestamp; // timestamp is on Position, not coords
+          const timestamp = pos.timestamp;
           if (accuracy <= minAccuracy) {
-            // Smoothing: moving average with last 2 points (if available)
             let lat = latitude, lng = longitude;
             if (journey.length >= 2) {
               lat = (journey[journey.length-1].latitude + journey[journey.length-2].latitude + latitude)/3;
@@ -665,11 +741,14 @@
     document.getElementById('pauseBtn').addEventListener('click', function(){ pauseJourney();});
     document.getElementById('resumeBtn').addEventListener('click', function(){ resumeJourney();});
     document.getElementById('stopBtn').addEventListener('click', function(){ stopJourney(true); saveToStorage();});
-
     downloadBtn().addEventListener('click', function(){ toggleDownloadMenu(); });
     document.getElementById('downloadJson').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyJSON(); });
     document.getElementById('downloadKml').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyKML(); });
-
+    document.getElementById('downloadGpx').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyGPX(); });
+    document.getElementById('downloadCsv').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyCSV(); });
+    document.getElementById('downloadTsv').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyTSV(); });
+    document.getElementById('downloadTxt').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyTXT(); });
+    document.getElementById('downloadGeoJson').addEventListener('click', function(){ closeDownloadMenu(); downloadJourneyGeoJSON(); });
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('accuracyInput').addEventListener('change', function(e){
       minAccuracy = Number(e.target.value);
