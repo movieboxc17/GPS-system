@@ -55,7 +55,26 @@ document.addEventListener('DOMContentLoaded', function() {
       reader.onload = function(e) {
         try {
           const data = JSON.parse(e.target.result);
-          let journey = Array.isArray(data) ? data : (data.journey || []);
+          let journey;
+          // Accept array of journeys (from all_journeys.json) or single journey
+          if (Array.isArray(data) && data.length && data[0].data && Array.isArray(data[0].data)) {
+            // Array of journey objects
+            data.forEach((item, idx) => {
+              journeys.push({
+                id: item.id || Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5),
+                name: item.name || `Journey ${idx+1}`,
+                data: Array.isArray(item.data) ? item.data : []
+              });
+            });
+            saveJourneysToStorage(journeys);
+            redrawMap();
+            renderJourneysList();
+            loaded++;
+            if (loaded === files.length) document.getElementById('uploadStatus').textContent = `Uploaded ${loaded} file(s).`;
+            return;
+          }
+          // Single journey object or array of points
+          journey = Array.isArray(data) ? data : (data.journey || []);
           let name = data.name || files[i].name.replace(/\.json$/i, "");
           const item = { id: Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5), name, data: journey };
           journeys.push(item);
