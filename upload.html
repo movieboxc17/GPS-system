@@ -34,6 +34,7 @@
     const PASSWORD = "kali";
     function showProtectedContent() {
       document.querySelector('.container').style.display = '';
+      window.initJourneys && window.initJourneys(); // call map logic after password
     }
     function hideProtectedContent() {
       document.querySelector('.container').style.display = 'none';
