@@ -45,6 +45,33 @@ document.addEventListener('DOMContentLoaded', function() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   redrawMap();
   renderJourneysList();
+  document.getElementById('fetchLocalBtn').onclick = function() {
+    const apiUrlLocal = '/Journeys/all_journeys.json';
+    fetch(apiUrlLocal)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          journeys = [];
+          data.forEach((item, idx) => {
+            const journey = item.data && item.data.journey ? item.data.journey : [];
+            journeys.push({
+              id: item.id || Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5),
+              name: item.name || `Journey ${idx+1}`,
+              data: journey
+            });
+          });
+          saveJourneysToStorage(journeys);
+          redrawMap();
+          renderJourneysList();
+          document.getElementById('uploadStatus').textContent = `Hämtade ${data.length} resor från mappen.`;
+        } else {
+          document.getElementById('uploadStatus').textContent = 'Inga resor hittades i mappen.';
+        }
+      })
+      .catch(err => {
+        document.getElementById('uploadStatus').textContent = `Fel vid hämtning: ${err}`;
+      });
+  };
   document.getElementById('uploadBtn').onclick = function() {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return;
