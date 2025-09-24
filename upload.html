@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload Journeys - GPS Map Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <style>
+    body { background: #f4f7fb; color: #1e293b; font-family: system-ui, sans-serif; margin: 0; }
+    .container { max-width: 700px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 2em; margin-bottom: 16px; }
+    #map { height: 400px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.08); margin-bottom: 24px; }
+    .upload-box { background: #fff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.06); padding: 18px; margin-bottom: 18px; }
+    .btn { background: #2176ae; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 16px; cursor: pointer; }
+    .btn:active { background: #195c83; }
+    .journey-list { margin-top: 12px; }
+    .journey-item { background: #eaf4fb; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Upload Journeys</h1>
+    <div class="upload-box">
+      <input type="file" id="fileInput" multiple accept="application/json">
+      <button class="btn" id="uploadBtn">Upload & Show</button>
+      <div id="uploadStatus" style="margin-top:10px;color:#2176ae;"></div>
+    </div>
+    <div id="map"></div>
+    <div class="journey-list" id="journeyList"></div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="upload.js"></script>
+  <script>
+    let map = L.map('map').setView([59.3293, 18.0686], 6); // Stockholm default
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    let journeyLayers = [];
+    let journeyColors = ["#2176ae", "#e53935", "#2e7d32", "#f59e0b", "#5cc1ff", "#ff6b6b", "#52d273", "#f6c453"];
+    function getColor(idx) { return journeyColors[idx % journeyColors.length]; }
+    function addJourneyToMap(journey, name, color) {
+      if (!Array.isArray(journey) || journey.length === 0) return;
+      const latlngs = journey.map(j => [j.latitude, j.longitude]);
+      const poly = L.polyline(latlngs, { color, weight: 5 }).addTo(map);
+      journeyLayers.push(poly);
+      // Add start/end markers
+      L.circleMarker(latlngs[0], { color, radius: 7, fillOpacity: .8 }).addTo(map).bindPopup(`${name} Start`);
+      L.circleMarker(latlngs[latlngs.length-1], { color, radius: 7, fillOpacity: .8 }).addTo(map).bindPopup(`${name} End`);
+      map.fitBounds(poly.getBounds(), { padding: [20, 20] });
+    }
+    document.getElementById('uploadBtn').onclick = function() {
+      const files = document.getElementById('fileInput').files;
+      if (!files.length) return;
+      document.getElementById('uploadStatus').textContent = '';
+      let loaded = 0;
+      for (let i = 0; i < files.length; i++) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const data = JSON.parse(e.target.result);
+            let journey = Array.isArray(data) ? data : (data.journey || []);
+            let name = data.name || files[i].name.replace(/\.json$/i, "");
+            addJourneyToMap(journey, name, getColor(i));
+            const stats = journey.length ? `${journey.length} pts` : 'No data';
+            document.getElementById('journeyList').innerHTML += `<div class='journey-item'><b>${name}</b> (${stats})</div>`;
+            loaded++;
+            if (loaded === files.length) document.getElementById('uploadStatus').textContent = `Uploaded ${loaded} file(s).`;
+          } catch (err) {
+            document.getElementById('uploadStatus').textContent = `Error reading ${files[i].name}: ${err}`;
+          }
+        };
+        reader.readAsText(files[i]);
+      }
+    };
+  </script>
+</body>
+</html>
