@@ -377,7 +377,8 @@
     function formatDate(ts) {
       if (ts === undefined || ts === null || Number.isNaN(ts)) return '';
       const d = new Date(ts);
-      return isNaN(d.getTime()) ? '' : d.toLocaleString();
+      // Swedish locale: sv-SE
+      return isNaN(d.getTime()) ? '' : d.toLocaleString('sv-SE', { hour12: false });
     }
     function isoTime(ts) {
       if (ts === undefined || ts === null || Number.isNaN(ts)) return '';
@@ -870,12 +871,12 @@ ${coordsLine}
     function suggestJourneyName() {
       if (journey.length && startTime) {
         const d = new Date(startTime);
-        const datePart = d.toLocaleDateString();
-        const timePart = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        const datePart = d.toLocaleDateString('sv-SE');
+        const timePart = d.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit', hour12: false});
         return `Journey ${datePart} ${timePart}`;
       }
       const now = new Date();
-      return `Journey ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+      return `Journey ${now.toLocaleDateString('sv-SE')} ${now.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit', hour12: false})}`;
     }
     function renderJourneysList() {
       savedJourneys = loadSavedJourneys();
@@ -991,7 +992,12 @@ ${coordsLine}
     document.getElementById('saveJourneyBtn').addEventListener('click', () => {
       const name = (journeyNameInput.value || '').trim() || suggestJourneyName();
       const ok = saveCurrentJourneyByName(name);
-      if (ok) { renderJourneysList(); }
+      if (ok) {
+        renderJourneysList();
+        // Ensure the list updates immediately and is visible
+        journeysModal.classList.add('open');
+        journeysModal.setAttribute('aria-hidden', 'false');
+      }
       updateStorageUsageDisplay();
     });
     document.getElementById('exportAllJourneysBtn').addEventListener('click', () => {
