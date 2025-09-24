@@ -90,6 +90,100 @@ document.addEventListener('DOMContentLoaded', function() {
       reader.readAsText(files[i]);
     }
   };
+  function fetchGithubJourneys(folderUrl) {
+    // Support local folder in same repo (e.g. /Journeys)
+    let apiUrlGithub;
+    if (folderUrl.startsWith('/')) {
+      // Relative path, assume repo is hosted on GitHub Pages
+      // Try to fetch all_journeys.json from the folder
+      const apiUrlLocal = folderUrl.replace(/\/$/, '') + '/all_journeys.json';
+      fetch(apiUrlLocal)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            data.forEach((item, idx) => {
+              const journey = item.data && item.data.journey ? item.data.journey : [];
+              journeys.push({
+                id: item.id || Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5),
+                name: item.name || `Journey ${idx+1}`,
+                data: journey
+              });
+            });
+            saveJourneysToStorage(journeys);
+            redrawMap();
+            renderJourneysList();
+            document.getElementById('uploadStatus').textContent = `Fetched ${data.length} journey(s) from local folder.`;
+          } else {
+            document.getElementById('uploadStatus').textContent = 'No journeys found in local folder.';
+          }
+        })
+        .catch(err => {
+          document.getElementById('uploadStatus').textContent = `Local folder error: ${err}`;
+        });
+      return;
+    }
+    const match = folderUrl.match(/github.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)\/(.+)/);
+    if (!match) {
+      document.getElementById('uploadStatus').textContent = 'Invalid GitHub folder URL.';
+      return;
+    }
+    const [_, owner, repo, branch, folder] = match;
+    apiUrlGithub = `https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`;
+    fetch(apiUrlGithub)
+      .then(r => r.json())
+      .then(files => {
+        if (!Array.isArray(files)) throw new Error('No files found');
+        const jsonFiles = files.filter(f => f.name.endsWith('.json'));
+        if (!jsonFiles.length) throw new Error('No .json files found');
+        let loaded = 0;
+        jsonFiles.forEach((file, idx) => {
+          fetch(file.download_url)
+            .then(r => r.json())
+            .then(data => {
+              let journey;
+              if (Array.isArray(data) && data.length && data[0].latitude !== undefined) {
+                journey = data;
+              } else if (Array.isArray(data) && data.length && data[0].data && Array.isArray(data[0].data)) {
+                // Array of journey objects
+                data.forEach((item, i) => {
+                  journeys.push({
+                    id: item.id || Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5),
+                    name: item.name || `${file.name.replace('.json','')}-${i+1}`,
+                    data: Array.isArray(item.data) ? item.data : []
+                  });
+                });
+                return;
+              } else {
+                journey = data.journey || [];
+              }
+              const name = data.name || file.name.replace('.json','');
+              journeys.push({
+                id: Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-5),
+                name,
+                data: journey
+              });
+              loaded++;
+              if (loaded === jsonFiles.length) {
+                saveJourneysToStorage(journeys);
+                redrawMap();
+                renderJourneysList();
+                document.getElementById('uploadStatus').textContent = `Fetched ${loaded} file(s) from GitHub.`;
+              }
+            })
+            .catch(err => {
+              document.getElementById('uploadStatus').textContent = `Error reading ${file.name}: ${err}`;
+            });
+        });
+      })
+      .catch(err => {
+        document.getElementById('uploadStatus').textContent = `GitHub error: ${err}`;
+      });
+  }
+  document.getElementById('fetchGithubBtn').onclick = function() {
+    const url = document.getElementById('githubFolderInput').value.trim();
+    if (!url) return;
+    fetchGithubJourneys(url);
+  };
   document.getElementById('journeyList').addEventListener('click', function(e) {
     if (e.target.dataset.del) {
       const idx = journeys.findIndex(j => j.id === e.target.dataset.del);
