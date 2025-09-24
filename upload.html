@@ -21,12 +21,7 @@
   <div class="container">
     <h1>Upload Journeys</h1>
     <div class="upload-box">
-      <input type="file" id="fileInput" multiple accept="application/json">
-      <button class="btn" id="uploadBtn">Upload & Show</button>
-      <div style="margin:12px 0 0 0;">
-        <input type="text" id="githubFolderInput" placeholder="GitHub folder URL (e.g. https://github.com/youruser/yourrepo/tree/main/journeys)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;">
-        <button class="btn" id="fetchGithubBtn" style="margin-top:8px;">Fetch from GitHub</button>
-      </div>
+      <button class="btn" id="fetchLocalBtn" style="margin-top:8px;">Visa mina resor</button>
       <div id="uploadStatus" style="margin-top:10px;color:#2176ae;"></div>
     </div>
     <div id="map"></div>
@@ -47,7 +42,7 @@
       hideProtectedContent();
       let tries = 0;
       function promptPassword() {
-        const input = window.prompt("Enter password to access uploads:");
+        const input = window.prompt("Skriv lösenordet för att visa dina resor:");
         if (input === PASSWORD) {
           showProtectedContent();
         } else {
@@ -75,65 +70,21 @@
       L.circleMarker(latlngs[latlngs.length-1], { color, radius: 7, fillOpacity: .8 }).addTo(map).bindPopup(`${name} End`);
       map.fitBounds(poly.getBounds(), { padding: [20, 20] });
     }
-    document.getElementById('uploadBtn').onclick = function() {
-      const files = document.getElementById('fileInput').files;
-      if (!files.length) return;
-      document.getElementById('uploadStatus').textContent = '';
-      let loaded = 0;
-      for (let i = 0; i < files.length; i++) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          try {
-            const data = JSON.parse(e.target.result);
-            let journey = Array.isArray(data) ? data : (data.journey || []);
-            let name = data.name || files[i].name.replace(/\.json$/i, "");
-            addJourneyToMap(journey, name, getColor(i));
-            const stats = journey.length ? `${journey.length} pts` : 'No data';
-            document.getElementById('journeyList').innerHTML += `<div class='journey-item'><b>${name}</b> (${stats})</div>`;
-            loaded++;
-            if (loaded === files.length) document.getElementById('uploadStatus').textContent = `Uploaded ${loaded} file(s).`;
-          } catch (err) {
-            document.getElementById('uploadStatus').textContent = `Error reading ${files[i].name}: ${err}`;
-          }
-        };
-        reader.readAsText(files[i]);
-      }
-    };
-    document.getElementById('fetchGithubBtn').onclick = function() {
-      const url = document.getElementById('githubFolderInput').value;
-      if (!url) return alert('Please enter a GitHub folder URL.');
-      const rawUrl = url.replace(/\/tree\/.+$/, '/raw/').replace('github.com', 'raw.githubusercontent.com');
-      fetch(rawUrl)
-        .then(response => response.text())
-        .then(text => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(text, 'text/html');
-          const links = Array.from(doc.querySelectorAll('a'))
-            .filter(a => a.href.endsWith('.json'))
-            .map(a => a.href);
-          if (!links.length) return alert('No JSON files found in the specified GitHub folder.');
-          let loaded = 0;
-          links.forEach((link, i) => {
-            fetch(link)
-              .then(response => response.json())
-              .then(data => {
-                let journey = Array.isArray(data) ? data : (data.journey || []);
-                let name = data.name || `Journey ${i+1}`;
-                addJourneyToMap(journey, name, getColor(i));
-                const stats = journey.length ? `${journey.length} pts` : 'No data';
-                document.getElementById('journeyList').innerHTML += `<div class='journey-item'><b>${name}</b> (${stats})</div>`;
-                loaded++;
-                if (loaded === links.length) document.getElementById('uploadStatus').textContent = `Fetched ${loaded} file(s) from GitHub.`;
-              })
-              .catch(err => {
-                console.error(`Error loading ${link}:`, err);
-                document.getElementById('uploadStatus').textContent += `\nError loading ${link}`;
-              });
-          });
+    document.getElementById('fetchLocalBtn').onclick = function() {
+      const url = '/Journeys/all_journeys.json';
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          let journey = Array.isArray(data) ? data : (data.journey || []);
+          let name = data.name || `Journey`;
+          addJourneyToMap(journey, name, getColor(0));
+          const stats = journey.length ? `${journey.length} pts` : 'No data';
+          document.getElementById('journeyList').innerHTML += `<div class='journey-item'><b>${name}</b> (${stats})</div>`;
+          document.getElementById('uploadStatus').textContent = `Fetched journey data.`;
         })
         .catch(err => {
-          console.error('Error fetching GitHub folder:', err);
-          alert('Error fetching GitHub folder. Check console for details.');
+          console.error('Error loading journey data:', err);
+          document.getElementById('uploadStatus').textContent = `Error loading journey data.`;
         });
     };
   </script>
