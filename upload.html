@@ -23,6 +23,10 @@
     <div class="upload-box">
       <input type="file" id="fileInput" multiple accept="application/json">
       <button class="btn" id="uploadBtn">Upload & Show</button>
+      <div style="margin:12px 0 0 0;">
+        <input type="text" id="githubFolderInput" placeholder="GitHub folder URL (e.g. https://github.com/youruser/yourrepo/tree/main/journeys)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;">
+        <button class="btn" id="fetchGithubBtn" style="margin-top:8px;">Fetch from GitHub</button>
+      </div>
       <div id="uploadStatus" style="margin-top:10px;color:#2176ae;"></div>
     </div>
     <div id="map"></div>
@@ -31,6 +35,31 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="upload.js"></script>
   <script>
+    // Simple password protection
+    const PASSWORD = "kali";
+    function showProtectedContent() {
+      document.querySelector('.container').style.display = '';
+    }
+    function hideProtectedContent() {
+      document.querySelector('.container').style.display = 'none';
+    }
+    function askPassword() {
+      hideProtectedContent();
+      let tries = 0;
+      function promptPassword() {
+        const input = window.prompt("Enter password to access uploads:");
+        if (input === PASSWORD) {
+          showProtectedContent();
+        } else {
+          tries++;
+          if (tries < 3) promptPassword();
+          else window.location.href = "index.html";
+        }
+      }
+      promptPassword();
+    }
+    document.addEventListener('DOMContentLoaded', askPassword);
+
     let map = L.map('map').setView([59.3293, 18.0686], 6); // Stockholm default
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
     let journeyLayers = [];
@@ -69,6 +98,43 @@
         };
         reader.readAsText(files[i]);
       }
+    };
+    document.getElementById('fetchGithubBtn').onclick = function() {
+      const url = document.getElementById('githubFolderInput').value;
+      if (!url) return alert('Please enter a GitHub folder URL.');
+      const rawUrl = url.replace(/\/tree\/.+$/, '/raw/').replace('github.com', 'raw.githubusercontent.com');
+      fetch(rawUrl)
+        .then(response => response.text())
+        .then(text => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(text, 'text/html');
+          const links = Array.from(doc.querySelectorAll('a'))
+            .filter(a => a.href.endsWith('.json'))
+            .map(a => a.href);
+          if (!links.length) return alert('No JSON files found in the specified GitHub folder.');
+          let loaded = 0;
+          links.forEach((link, i) => {
+            fetch(link)
+              .then(response => response.json())
+              .then(data => {
+                let journey = Array.isArray(data) ? data : (data.journey || []);
+                let name = data.name || `Journey ${i+1}`;
+                addJourneyToMap(journey, name, getColor(i));
+                const stats = journey.length ? `${journey.length} pts` : 'No data';
+                document.getElementById('journeyList').innerHTML += `<div class='journey-item'><b>${name}</b> (${stats})</div>`;
+                loaded++;
+                if (loaded === links.length) document.getElementById('uploadStatus').textContent = `Fetched ${loaded} file(s) from GitHub.`;
+              })
+              .catch(err => {
+                console.error(`Error loading ${link}:`, err);
+                document.getElementById('uploadStatus').textContent += `\nError loading ${link}`;
+              });
+          });
+        })
+        .catch(err => {
+          console.error('Error fetching GitHub folder:', err);
+          alert('Error fetching GitHub folder. Check console for details.');
+        });
     };
   </script>
 </body>
