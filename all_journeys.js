@@ -49,8 +49,8 @@ fetch('Journeys/Data1.json')
     if (!filterInput) {
       const filterDiv = document.createElement('div');
       filterDiv.innerHTML = `<input id='filterInput' type='text' placeholder='Filtrera namn eller datum...' style='padding:6px 10px;margin-bottom:8px;width:90%;max-width:320px;'>`;
-      const journeyList = document.getElementById('journeyList');
-      journeyList.parentNode.insertBefore(filterDiv, journeyList);
+      const mainContent = document.getElementById('mainContent');
+      mainContent.insertBefore(filterDiv, mainContent.firstChild);
       filterInput = filterDiv.firstChild;
     }
     // List and map
