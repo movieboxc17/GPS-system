@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Alla GPS-resor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { width: 100vw; height: 70vh; min-height: 320px; }
+    #journeyList { margin: 16px 0; }
+    .journey-card { background: #f4f8fb; margin-bottom: 10px; padding: 10px 16px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    .journey-toggle { margin-right: 8px; }
+    .stats { font-size: 14px; color: #555; margin-top: 4px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0b2030; color: #eaf4fb; }
+      .journey-card { background: #1a2a3a; color: #eaf4fb; }
+    }
+  </style>
+</head>
+<body>
+  <h2>Alla GPS-resor</h2>
+  <div id="map"></div>
+  <div id="journeyList"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="all_journeys.js"></script>
+</body>
+</html>
