@@ -49,14 +49,12 @@
         document.getElementById('pwWrap').style.display = 'none';
         document.getElementById('mainContent').style.display = '';
   // Add filter input before journeyList after unlocking
-  var filterDiv = document.createElement('div');
-  filterDiv.innerHTML = "<input id='filterInput' type='text' placeholder='Filtrera namn eller datum...' style='padding:6px 10px;margin-bottom:8px;width:90%;max-width:320px;'>";
-  var journeyList = document.getElementById('journeyList');
-  journeyList.parentNode.insertBefore(filterDiv, journeyList);
-  // Now load the JS
-  var script = document.createElement('script');
-  script.src = 'all_journeys.js';
-  document.body.appendChild(script);
+        // Now load the JS only after DOM is ready and mainContent is visible
+        setTimeout(function() {
+          var script = document.createElement('script');
+          script.src = 'all_journeys.js';
+          document.body.appendChild(script);
+        }, 100);
       } else {
         msg.textContent = 'Fel lösenord. Försök igen.';
       }
