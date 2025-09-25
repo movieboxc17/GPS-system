@@ -19,7 +19,12 @@
   </style>
 </head>
 <body>
-  <h2>Alla GPS-resor</h2>
+  <header style="padding:12px 0 0 0;text-align:center;">
+    <h2 style="margin-bottom:8px;">Alla GPS-resor</h2>
+    <div id="totalStats" style="font-size:15px;color:#2176ae;margin-bottom:8px;"></div>
+    <div id="colorLegend" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:8px;"></div>
+    <button id="toggleAllBtn" class="btn" style="margin-bottom:10px;">Dölj alla</button>
+  </header>
   <div id="map"></div>
   <div id="journeyList"></div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
