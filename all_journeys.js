@@ -44,10 +44,7 @@ fetch('Journeys/Data1.json')
     document.getElementById('legendToggleBtn').onclick = function() {
       legendItems.style.display = legendItems.style.display === 'none' ? 'flex' : 'none';
     };
-    // Filter UI
-    const filterDiv = document.createElement('div');
-    filterDiv.innerHTML = `<input id='filterInput' type='text' placeholder='Filtrera namn eller datum...' style='padding:6px 10px;margin-bottom:8px;width:90%;max-width:320px;'>`;
-    document.body.insertBefore(filterDiv, document.getElementById('journeyList'));
+  // Filter UI: input already exists, just attach event listener below
     // List and map
     document.getElementById('journeyList').innerHTML = '';
     journeys.forEach((j, idx) => {
