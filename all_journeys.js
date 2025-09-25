@@ -20,7 +20,7 @@ const colors = [
 let polylines = [], startMarkers = [], endMarkers = [], journeysData = [];
 let allVisible = true;
 
-fetch('Data1.json')
+fetch('Journeys/Data1.json')
   .then(r => r.json())
   .then(journeys => {
     if (!Array.isArray(journeys) || journeys.length === 0) {
