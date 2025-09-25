@@ -44,7 +44,15 @@ fetch('Journeys/Data1.json')
     document.getElementById('legendToggleBtn').onclick = function() {
       legendItems.style.display = legendItems.style.display === 'none' ? 'flex' : 'none';
     };
-  // Filter UI: input already exists, just attach event listener below
+    // Filter UI: create input before journeyList
+    let filterInput = document.getElementById('filterInput');
+    if (!filterInput) {
+      const filterDiv = document.createElement('div');
+      filterDiv.innerHTML = `<input id='filterInput' type='text' placeholder='Filtrera namn eller datum...' style='padding:6px 10px;margin-bottom:8px;width:90%;max-width:320px;'>`;
+      const journeyList = document.getElementById('journeyList');
+      journeyList.parentNode.insertBefore(filterDiv, journeyList);
+      filterInput = filterDiv.firstChild;
+    }
     // List and map
     document.getElementById('journeyList').innerHTML = '';
     journeys.forEach((j, idx) => {
