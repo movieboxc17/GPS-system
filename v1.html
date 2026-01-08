@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <meta charset="UTF-8">
   <title>GPS Journey Recorder - Mobile Enhanced</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -474,6 +476,53 @@
             <button id="downloadCsv" class="item" role="menuitem">📊 CSV</button>
             <button id="downloadTsv" class="item" role="menuitem">📋 TSV</button>
             <button id="downloadTxt" class="item" role="menuitem">📝 Plain Text (lat,lng)</button>
+            <div class="group-title">All Formats</div>
+            <button id="downloadAllZip" class="item btn btn-primary" style="margin-top:8px;">📦 Download All as ZIP</button>
+            <style>
+              /* Enhanced download menu styles */
+              #downloadMenu.menu {
+                padding: 10px 0 10px 0;
+                border-radius: 18px;
+                min-width: 260px;
+                box-shadow: 0 8px 32px rgba(33,118,174,.18);
+                background: var(--surface-blur);
+                border: var(--border);
+                backdrop-filter: blur(10px);
+              }
+              #downloadMenu .group-title {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--accent-solid);
+                margin: 8px 0 2px 12px;
+                letter-spacing: 0.04em;
+              }
+              #downloadMenu .item {
+                margin: 2px 8px;
+                border-radius: 10px;
+                border: none;
+                background: var(--surface);
+                color: var(--text);
+                font-size: 15px;
+                font-weight: 500;
+                transition: background .15s, color .15s;
+                box-shadow: 0 1px 4px rgba(33,118,174,.06);
+              }
+              #downloadMenu .item:hover, #downloadMenu .item:focus {
+                background: var(--accent);
+                color: var(--accent-contrast);
+              }
+              #downloadAllZip {
+                background: linear-gradient(90deg, #2176ae 0%, #5cc1ff 100%);
+                color: #fff;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(33,118,174,.18);
+                border: none;
+              }
+              #downloadAllZip:hover, #downloadAllZip:focus {
+                background: linear-gradient(90deg, #195c83 0%, #5cc1ff 100%);
+                color: #fff;
+              }
+            </style>
           </div>
         </div>
 
@@ -533,6 +582,25 @@
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+        // --- Download all as ZIP ---
+        function downloadAllAsZip() {
+          if (!window.JSZip) return updateStatusDisplay("JSZip not loaded", "err");
+          if (!journey.length) return updateStatusDisplay("No journey to export.", "warn");
+          const zip = new JSZip();
+          zip.file("journey.json", JSON.stringify({ journey, started, paused, startTime, minAccuracy, accuracyList }, null, 2));
+          zip.file("journey.geojson", journeyToGeoJson(journey));
+          zip.file("journey.kml", journeyToKml(journey));
+          zip.file("journey_path_only.kml", journeyToKmlPathOnly(journey));
+          zip.file("journey.gpx", journeyToGpx(journey));
+          zip.file("journey.csv", journeyToCsv(journey, ','));
+          zip.file("journey.tsv", journeyToCsv(journey, '\t'));
+          zip.file("journey.txt", journey.map(j => `${j.latitude},${j.longitude}`).join('\n'));
+          zip.generateAsync({ type: "blob" }).then(function(content) {
+            saveAs(content, "journey_all_formats.zip");
+            updateStatusDisplay("All formats zipped!", "ok");
+          });
+        }
+      document.getElementById('downloadAllZip').addEventListener('click', function(){ closeDownloadMenu(); downloadAllAsZip(); });
     // --- Utility ---
     function haversine(lat1, lon1, lat2, lon2) {
       const toRad = x => x * Math.PI / 180;
