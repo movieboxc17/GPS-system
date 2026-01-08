@@ -488,7 +488,12 @@
                 background: var(--surface-blur);
                 border: var(--border);
                 backdrop-filter: blur(10px);
-                z-index: 3000 !important;
+                z-index: 99999 !important;
+                position: fixed !important;
+                left: 50% !important;
+                top: 20vh !important;
+                transform: translateX(-50%) !important;
+                max-width: 96vw;
               }
               #downloadMenu .group-title {
                 font-size: 13px;
